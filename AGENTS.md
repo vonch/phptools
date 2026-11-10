@@ -8,6 +8,13 @@
 - PHP 项目本地使用 phpStudy，已配置自定义域名，PHP 版本一般为 8.0。
 - MySQL 使用 phpStudy 环境，版本一般为 5.7。
 
+## 每次更新都提交官网和 GitHub
+
+- 凡是对用户可见的更新，做完后都要同时发到官网和 GitHub，不必再等用户说「提交」。
+- 官网是 https://phptools.wuyouzhilian.cn 。网站文件传到 `/www/wwwroot/phptools.wuyouzhilian.cn`，`chown www:www` 且 `chmod 644`。软件升级另发新版本：`app.go`、`frontend/package.json`、`frontend/package-lock.json` 的版本号必须一致，且高于当前线上版本；构建时不要结束正在运行的 PHPTools。不要改已发布版本的文件、SHA-256、大小、发布时间和说明，也不要下载线上的 `PHPTools.exe`。
+- GitHub 仓库是 https://github.com/vonch/phptools ，推送到 `main`。不要提交网站账号配置、凭据、安装包和 `dist`。
+- 只改规则或内部说明、用户在官网和软件里看不到的，只推 GitHub，不发新版本。
+
 ## 临时产物与测试清理
 
 - 除非用户明确要求保留，测试完成或任务结束前，必须主动清理本次创建的临时文件、测试目录、测试数据库、临时凭据和测试进程；测试失败也不能遗留这些临时产物。

@@ -1,0 +1,14 @@
+---
+description: 每次用户可见的更新都同时发到官网和 GitHub
+alwaysApply: true
+---
+
+# 每次更新都提交官网和 GitHub
+
+凡是用户能在官网或软件里看到的更新，做完后同时发到两边，不必再等用户说「提交」。
+
+- 官网：https://phptools.wuyouzhilian.cn 。文件放到 `/www/wwwroot/phptools.wuyouzhilian.cn`，属主 `www:www`，权限 `644`。
+- 软件升级必须升版本。`internal/desktop/app.go` 的 `appVersion`、`frontend/package.json` 和 `frontend/package-lock.json` 的两处版本号保持一致，并且高于当前线上版本。构建时不要结束正在运行的 PHPTools。
+- 已发布版本的程序、SHA-256、大小、发布时间和更新说明保持不动。不要下载线上的 `PHPTools.exe`。
+- GitHub：https://github.com/vonch/phptools ，推送到 `main`。不要提交网站账号配置、凭据、安装包和 `dist`。
+- 只改规则或内部说明、用户看不到的内容，只推 GitHub，不发新版本。
