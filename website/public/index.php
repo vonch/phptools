@@ -27,8 +27,8 @@ render_public_start('PHPTools · 本机 PHP 开发环境', 'home');
         </ul>
     </div>
     <figure class="hero-shot">
-        <img src="/assets/screens/overview.jpg" alt="PHPTools 环境概览界面" width="1360" height="860">
-        <figcaption>实际界面。实例名称已改为示例。</figcaption>
+        <img src="/assets/screens/overview.jpg?v=20261110" alt="PHPTools 环境概览界面" width="2240" height="1487">
+        <figcaption>环境概览</figcaption>
     </figure>
 </section>
 
@@ -55,15 +55,15 @@ render_public_start('PHPTools · 本机 PHP 开发环境', 'home');
     <div class="section-head">
         <p class="eyebrow">界面</p>
         <h2>站点、组件都在这一个窗口里。</h2>
-        <p>下面是软件里的真实页面。站点名称和带有本机环境来源的实例名已改成示例，其余界面保持原样。</p>
+        <p>下面是完整的软件窗口。</p>
     </div>
     <div class="shot-grid">
         <figure>
-            <img src="/assets/screens/sites.jpg" alt="站点管理页面，站点名称已改为示例" width="1360" height="860">
+            <img src="/assets/screens/sites.jpg?v=20261110" alt="站点管理页面" width="2240" height="1487">
             <figcaption>站点管理</figcaption>
         </figure>
         <figure>
-            <img src="/assets/screens/packages.jpg" alt="组件中心中的 PHP 版本列表" width="1360" height="860">
+            <img src="/assets/screens/packages.jpg?v=20261110" alt="组件中心中的 PHP 版本列表" width="2240" height="1487">
             <figcaption>组件中心</figcaption>
         </figure>
     </div>
