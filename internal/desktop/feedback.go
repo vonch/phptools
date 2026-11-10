@@ -22,6 +22,7 @@ import (
 
 const feedbackEndpoint = "https://phptools.wuyouzhilian.cn/api/feedback.php"
 const officialSiteURL = "https://phptools.wuyouzhilian.cn/"
+const feedbackPageURL = "https://github.com/vonch/phptools/issues/new/choose"
 const feedbackImageLimit = 3
 const feedbackImageInputBytes = 8 * 1024 * 1024
 const feedbackImageOutputBytes = 1024 * 1024
@@ -58,6 +59,14 @@ func (a *App) OpenOfficialSite() error {
 		return errors.New("浏览器打开功能尚未初始化")
 	}
 	return a.hooks.OpenURL(officialSiteURL)
+}
+
+// OpenFeedback opens the GitHub issue chooser for a suggestion or bug report.
+func (a *App) OpenFeedback() error {
+	if a.hooks.OpenURL == nil {
+		return errors.New("浏览器打开功能尚未初始化")
+	}
+	return a.hooks.OpenURL(feedbackPageURL)
 }
 
 // SubmitFeedback sends a suggestion or bug report to the official website.

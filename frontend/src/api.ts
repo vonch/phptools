@@ -120,6 +120,7 @@ interface DesktopAPI {
   OpenDirectory(path: string): Promise<void>;
   VisitSite(id: string): Promise<void>;
   OpenOfficialSite(): Promise<void>;
+  OpenFeedback(): Promise<void>;
   SubmitFeedback(report: FeedbackReport): Promise<string>;
   Quit(): Promise<void>;
 }

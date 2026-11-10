@@ -29,7 +29,7 @@ function render_public_start(string $title, string $active): void
         <a href="<?= h($featureHref) ?>">功能</a>
         <a class="<?= $active === 'changelog' ? 'active' : '' ?>" href="/changelog.php">更新日志</a>
         <a class="<?= $active === 'download' ? 'active' : '' ?>" href="/download.php">下载</a>
-        <a class="<?= $active === 'feedback' ? 'active' : '' ?>" href="/feedback.php">反馈</a>
+        <a href="https://github.com/vonch/phptools/issues/new/choose" target="_blank" rel="noreferrer">反馈</a>
     </nav>
     <?php if ($release): ?>
         <a class="button button-small" href="/PHPTools.exe">下载 <?= h($release['version']) ?></a>
@@ -59,7 +59,7 @@ function render_public_end(): void
         <a href="/#capabilities">功能</a>
         <a href="/changelog.php">更新日志</a>
         <a href="/download.php">下载</a>
-        <a href="/feedback.php">反馈</a>
+        <a href="https://github.com/vonch/phptools/issues/new/choose" target="_blank" rel="noreferrer">反馈</a>
     </div>
     <div class="footer-col">
         <span>运行环境</span>

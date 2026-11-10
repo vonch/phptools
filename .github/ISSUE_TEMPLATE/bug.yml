@@ -1,0 +1,38 @@
+name: BUG
+description: 写清操作步骤、期望结果和实际结果
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: 软件版本
+      description: 设置页左下角显示的版本，例如 0.1.34
+      placeholder: 0.1.34
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 操作步骤
+      description: 从哪个页面开始，点了什么
+      placeholder: |
+        1. 打开哪个页面
+        2. 做了什么
+        3. 出现了什么
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望结果
+      description: 你认为这时应该发生什么
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际结果
+      description: 实际看到的提示、界面或结果。可以把截图拖到这里。
+    validations:
+      required: true

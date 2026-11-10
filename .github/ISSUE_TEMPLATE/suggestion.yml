@@ -1,0 +1,27 @@
+name: 建议
+description: 写清现在的问题和希望的做法
+title: "[建议] "
+labels: ["enhancement"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: 软件版本
+      description: 设置页左下角显示的版本，例如 0.1.34
+      placeholder: 0.1.34
+    validations:
+      required: false
+  - type: textarea
+    id: problem
+    attributes:
+      label: 现在的问题
+      description: 现在哪里不方便。可以把截图拖到这里。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 希望的做法
+      description: 希望软件改成什么样
+    validations:
+      required: true

@@ -173,10 +173,10 @@ render_public_start('PHPTools · 本机 PHP 开发环境', 'home');
 <section class="section" id="feedback">
     <div class="section-head">
         <p class="eyebrow">反馈</p>
-        <h2>按格式提交建议或 BUG。</h2>
-        <p>BUG 写清操作步骤、期望结果和实际结果。建议写清现在的问题和希望的做法。最多 3 张截图，提交时会压缩到 1 MB 以内。软件设置里的应用升级也能提交。</p>
+        <h2>到 GitHub 提交建议或 BUG。</h2>
+        <p>选择 BUG 或建议，按模板写清问题，也可以把截图拖进正文。</p>
     </div>
-    <p class="more-log"><a href="/feedback.php">去填写</a></p>
+    <p class="more-log"><a href="https://github.com/vonch/phptools/issues/new/choose" target="_blank" rel="noreferrer">去 GitHub 填写</a></p>
 </section>
 <section class="band">
     <div>

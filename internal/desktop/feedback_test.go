@@ -29,6 +29,13 @@ func TestOpenOfficialSite(t *testing.T) {
 	if opened != officialSiteURL {
 		t.Fatalf("opened %s", opened)
 	}
+	opened = ""
+	if err := a.OpenFeedback(); err != nil {
+		t.Fatal(err)
+	}
+	if opened != feedbackPageURL {
+		t.Fatalf("opened %s", opened)
+	}
 }
 
 func TestSubmitFeedback(t *testing.T) {
