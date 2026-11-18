@@ -91,7 +91,7 @@ func (a *App) queueTask(action, target string, work func(context.Context, string
 					}
 				} else if err != nil {
 					t.State = "failed"
-					t.Error = err.Error()
+					t.Error = presentError(err)
 				} else {
 					t.State = "completed"
 					t.Progress = 100

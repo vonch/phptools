@@ -32,6 +32,17 @@ func TestFailedStartStaysVisibleAndCanBeRetried(t *testing.T) {
 	}
 }
 
+func TestMissingMySQLPasswordIsExplainedInChinese(t *testing.T) {
+	root := t.TempDir()
+	m := New(root, nil, func(string) (string, error) {
+		return "", errString("secret not found in keyring")
+	})
+	password, err := m.secret("missing")
+	if password != "" || err == nil || !hasChinese(err.Error()) || strings.Contains(err.Error(), "secret not found") {
+		t.Fatalf("password error = %q %v", password, err)
+	}
+}
+
 func TestMissingRuntimeLibraryExplainsTheExit(t *testing.T) {
 	if !missingRuntimeLibrary(errString("exit status 0xc0000135")) {
 		t.Fatal("0xc0000135 was not recognized as a missing runtime library")

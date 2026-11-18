@@ -345,12 +345,27 @@ func (m *Manager) secret(id string) (string, error) {
 	}
 	password, err := m.getSecret(id)
 	if err != nil {
-		return "", err
+		if strings.Contains(strings.ToLower(err.Error()), "secret not found in keyring") {
+			return "", errors.New("找不到这个 MySQL 实例的管理密码。请删除该实例后重新打开软件，会自动重建并保存管理密码，然后再启动。")
+		}
+		if hasChinese(err.Error()) {
+			return "", err
+		}
+		return "", errors.New("无法读取 Windows 凭据管理器中的 MySQL 密码")
 	}
 	if password == "" || strings.ContainsAny(password, "\x00\r\n") {
 		return "", errors.New("MySQL 密码不能为空或包含换行、空字节")
 	}
 	return password, nil
+}
+
+func hasChinese(text string) bool {
+	for _, r := range text {
+		if r >= 0x4E00 && r <= 0x9FFF {
+			return true
+		}
+	}
+	return false
 }
 
 func mysqlPassword(password string) string {

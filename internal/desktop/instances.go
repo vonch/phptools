@@ -2,6 +2,7 @@ package desktop
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"sort"
@@ -43,7 +44,7 @@ func (a *App) CreateInstance(input model.InstanceInput) (model.Instance, error) 
 	}
 	if p.Kind == "mysql" {
 		if err := keyring.Set(a.credentialService(), instance.ID, input.Password); err != nil {
-			return instance, fmt.Errorf("保存 Windows 凭据失败：%w", err)
+			return instance, errors.New("无法把 MySQL 管理密码写入 Windows 凭据管理器")
 		}
 	}
 	if err := a.saveInstance(instance); err != nil {
@@ -230,7 +231,19 @@ func (a *App) ensureServiceInstances(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+		if pkg.Kind == "mysql" {
+			password, err := newMySQLPassword()
+			if err != nil {
+				return err
+			}
+			if err = keyring.Set(a.credentialService(), instance.ID, password); err != nil {
+				return errors.New("无法把 MySQL 管理密码写入 Windows 凭据管理器")
+			}
+		}
 		if err := a.saveInstance(instance); err != nil {
+			if pkg.Kind == "mysql" {
+				_ = keyring.Delete(a.credentialService(), instance.ID)
+			}
 			return err
 		}
 		used[port] = true
@@ -238,6 +251,18 @@ func (a *App) ensureServiceInstances(ctx context.Context) error {
 		next[pkg.Kind] = port + 1
 	}
 	return nil
+}
+
+func newMySQLPassword() (string, error) {
+	const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
+	raw := make([]byte, 24)
+	if _, err := rand.Read(raw); err != nil {
+		return "", errors.New("无法生成 MySQL 管理密码")
+	}
+	for i, b := range raw {
+		raw[i] = alphabet[int(b)%len(alphabet)]
+	}
+	return string(raw), nil
 }
 
 func (a *App) StartInstance(id string) (string, error)   { return a.instanceTask("start", id) }
