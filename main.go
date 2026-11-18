@@ -1,12 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"embed"
 	"flag"
-	"image"
-	"image/color"
-	"image/png"
 	"log"
 	"os"
 	"path/filepath"
@@ -17,6 +13,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/w32"
 	"phptools/internal/dbtools"
 	"phptools/internal/desktop"
+	"phptools/internal/icon"
 	"phptools/internal/prerequisites"
 	"phptools/internal/sites"
 )
@@ -159,35 +156,5 @@ func main() {
 }
 
 func appIcon() []byte {
-	im := image.NewRGBA(image.Rect(0, 0, 32, 32))
-	bg := color.RGBA{19, 29, 47, 255}
-	ink := color.RGBA{112, 231, 190, 255}
-	for y := 0; y < 32; y++ {
-		for x := 0; x < 32; x++ {
-			im.SetRGBA(x, y, bg)
-		}
-	}
-	for y := 7; y < 26; y++ {
-		for x := 8; x < 13; x++ {
-			im.SetRGBA(x, y, ink)
-		}
-	}
-	for y := 7; y < 12; y++ {
-		for x := 12; x < 24; x++ {
-			im.SetRGBA(x, y, ink)
-		}
-	}
-	for y := 11; y < 18; y++ {
-		for x := 20; x < 25; x++ {
-			im.SetRGBA(x, y, ink)
-		}
-	}
-	for y := 16; y < 21; y++ {
-		for x := 12; x < 24; x++ {
-			im.SetRGBA(x, y, ink)
-		}
-	}
-	var buf bytes.Buffer
-	_ = png.Encode(&buf, im)
-	return buf.Bytes()
+	return icon.PNG()
 }

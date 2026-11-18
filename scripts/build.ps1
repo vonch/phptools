@@ -60,8 +60,12 @@ if ([pkg.version, lock.version, lock.packages[""].version].some(v => v !== proce
         if ($LASTEXITCODE -ne 0) { throw 'WebView2 suspension tests failed.' }
     }
     New-Item -ItemType Directory -Path $releaseDirectory -Force | Out-Null
+    go run ./scripts/embedicon
+    if ($LASTEXITCODE -ne 0) { throw 'Windows icon resource failed.' }
     go build -trimpath -tags production -ldflags '-s -w -H windowsgui' -o "$releaseDirectory/PHPTools.exe" .
     if ($LASTEXITCODE -ne 0) { throw 'Executable build failed.' }
+    go run ./scripts/embedicon -exe "$releaseDirectory/PHPTools.exe"
+    if ($LASTEXITCODE -ne 0) { throw 'The executable has no Windows icon.' }
     Copy-Item -LiteralPath README.md,THIRD_PARTY_NOTICES.md,FIRST_RUN.md -Destination $releaseDirectory
     New-Item -ItemType Directory -Path "$releaseDirectory/licenses" -Force | Out-Null
     Copy-Item -LiteralPath third_party/wails/LICENSE -Destination "$releaseDirectory/licenses/Wails-LICENSE.txt"

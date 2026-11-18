@@ -6,6 +6,7 @@
 /build/sidebar-qa/
 /build/migration/
 /dist/
+/rsrc_windows_*.syso
 /.test-runtime/
 *.log
 /website/storage/config.php

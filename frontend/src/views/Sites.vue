@@ -514,9 +514,6 @@ const columns = computed(() =>
     <div v-if="sites.length" class="site-table-frame">
     <NDataTable
       class="site-table"
-      flex-height
-      virtual-scroll
-      :min-row-height="58"
       :theme-overrides="{ tdColorSorting: 'var(--n-td-color)', thColorSorting: 'var(--n-th-color)' }"
       :columns="columns"
       :data="filtered"
@@ -751,8 +748,7 @@ const columns = computed(() =>
 
 <style scoped>
 .sites-page {
-  height: 100%;
-  min-height: 0;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
 }
@@ -816,20 +812,10 @@ const columns = computed(() =>
   min-height: 240px;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 .sites-panel :deep(.n-card__content) {
-  flex: 1 1 auto;
-  min-height: 0;
   display: flex;
   flex-direction: column;
-}
-.site-table-frame {
-  flex: 1 1 auto;
-  min-height: 0;
-}
-.site-table {
-  height: 100%;
 }
 .site-actions {
   display: flex;
