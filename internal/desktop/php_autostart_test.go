@@ -99,8 +99,41 @@ func TestInstalledMySQLStoresAPassword(t *testing.T) {
 	if err != nil || len(password) < 8 {
 		t.Fatalf("stored password: %q %v", password, err)
 	}
+	if err = a.ensureMySQLPassword(found); err != nil {
+		t.Fatal(err)
+	}
+	again, err := a.getSecret(found.ID)
+	if err != nil || again != password {
+		t.Fatal("existing password was replaced")
+	}
 	raw, err := os.ReadFile(filepath.Join(a.data.Settings.Root, "metadata.db"))
 	if err == nil && strings.Contains(string(raw), password) {
 		t.Fatal("plaintext password in metadata")
+	}
+}
+
+func TestExistingMySQLWithoutPasswordGetsOneBeforeStart(t *testing.T) {
+	a := testApp(t)
+	pkg := model.Package{ID: "mysql-5.7.44-x64", Kind: "mysql", Version: "5.7.44", Path: filepath.Join(a.data.Settings.Root, "packages", "mysql-5.7.44-x64")}
+	if err := os.MkdirAll(filepath.Join(pkg.Path, "bin"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(pkg.Path, "bin", "mysqld.exe"), []byte("not executed"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	instance, err := a.manager.Create(context.Background(), pkg, model.InstanceInput{Name: "MySQL 5.7.44", PackageID: pkg.ID, Port: 3307})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = a.saveInstance(instance); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = keyring.Delete(a.credentialService(), instance.ID) })
+	if err = a.ensureMySQLPassword(instance); err != nil {
+		t.Fatal(err)
+	}
+	password, err := a.getSecret(instance.ID)
+	if err != nil || len(password) < 8 {
+		t.Fatalf("repaired password: %q %v", password, err)
 	}
 }

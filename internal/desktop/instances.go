@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 	"time"
 
@@ -120,6 +122,11 @@ func (a *App) start(ctx context.Context, id string) error {
 			}
 		}
 	}
+	if v.Kind == "mysql" {
+		if err = a.ensureMySQLPassword(v); err != nil {
+			return err
+		}
+	}
 	v, err = a.manager.Start(ctx, p, v)
 	if saveErr := a.saveInstance(v); err == nil {
 		err = saveErr
@@ -210,6 +217,11 @@ func (a *App) ensureServiceInstances(ctx context.Context) error {
 	for _, inst := range instances {
 		used[inst.Port] = true
 		has[inst.PackageID] = true
+		if inst.Kind == "mysql" && !mysqlDataInitialized(inst) {
+			if err := a.ensureMySQLPassword(inst); err != nil {
+				return err
+			}
+		}
 	}
 	next := map[string]int{"php": 9100, "mysql": 3307, "nginx": 8081, "redis": 6380}
 	label := map[string]string{"php": "PHP", "mysql": "MySQL", "nginx": "Nginx", "redis": "Redis"}
@@ -251,6 +263,40 @@ func (a *App) ensureServiceInstances(ctx context.Context) error {
 		next[pkg.Kind] = port + 1
 	}
 	return nil
+}
+
+func (a *App) ensureMySQLPassword(inst model.Instance) error {
+	_, err := keyring.Get(a.credentialService(), inst.ID)
+	if err == nil {
+		return nil
+	}
+	if !errors.Is(err, keyring.ErrNotFound) {
+		return errors.New("无法读取 Windows 凭据管理器中的 MySQL 密码")
+	}
+	if mysqlDataInitialized(inst) {
+		return errors.New("这个 MySQL 实例已经初始化，但本机没有它的管理密码。请删除该实例后重新创建。")
+	}
+	password, err := newMySQLPassword()
+	if err != nil {
+		return err
+	}
+	if err = keyring.Set(a.credentialService(), inst.ID, password); err != nil {
+		return errors.New("无法把 MySQL 管理密码写入 Windows 凭据管理器")
+	}
+	return nil
+}
+
+func mysqlDataInitialized(inst model.Instance) bool {
+	if inst.DataDir == "" {
+		return false
+	}
+	if _, err := os.Stat(filepath.Join(inst.DataDir, "mysql")); err == nil {
+		return true
+	}
+	if _, err := os.Stat(filepath.Join(filepath.Dir(inst.DataDir), "mysql-initialized")); err == nil {
+		return true
+	}
+	return false
 }
 
 func newMySQLPassword() (string, error) {
