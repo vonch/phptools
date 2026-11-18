@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -64,6 +65,10 @@ func Install(ctx context.Context, root string, pkg model.Package, progress func(
 	archive := filepath.Join(staging, "download.zip")
 	progress(0, 0, "正在下载 "+pkg.Kind+" "+pkg.Version)
 	digest, err := downloadZIP(ctx, pkg.URL, archive, progress)
+	if archiveURL, ok := phpArchiveURL(pkg.URL); ok && statusCode(err) == http.StatusNotFound {
+		progress(0, 0, "发行目录没有该版本，改为下载归档")
+		digest, err = downloadZIP(ctx, archiveURL, archive, progress)
+	}
 	if err != nil {
 		return pkg, err
 	}
@@ -315,7 +320,7 @@ func downloadZIP(ctx context.Context, raw, dest string, progress func(int64, int
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("组件下载失败：HTTP %d", res.StatusCode)
+		return "", statusError{res.StatusCode}
 	}
 	if res.ContentLength > maxArchiveBytes {
 		return "", errors.New("组件 ZIP 超出 2 GiB 限制")
@@ -360,6 +365,33 @@ func (p *progressWriter) Write(data []byte) (int, error) {
 		p.callback(p.done, p.total, "正在下载组件")
 	}
 	return len(data), nil
+}
+
+type statusError struct{ code int }
+
+func (e statusError) Error() string { return fmt.Sprintf("组件下载失败：HTTP %d", e.code) }
+
+func statusCode(err error) int {
+	var status statusError
+	if errors.As(err, &status) {
+		return status.code
+	}
+	return 0
+}
+
+// phpArchiveURL is the same official ZIP after PHP moves it out of the current
+// releases directory. The catalog hash still identifies the file.
+func phpArchiveURL(raw string) (string, bool) {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "https" || u.Host != "downloads.php.net" || u.RawQuery != "" || u.Fragment != "" {
+		return "", false
+	}
+	name := path.Base(u.Path)
+	if path.Dir(u.Path) != "/~windows/releases" || !strings.HasPrefix(name, "php-") || !strings.HasSuffix(name, "-x64.zip") {
+		return "", false
+	}
+	u.Path = "/~windows/releases/archives/" + name
+	return u.String(), true
 }
 
 func recoverExisting(target string, pkg model.Package) (model.Package, error) {

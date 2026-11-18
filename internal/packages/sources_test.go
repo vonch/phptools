@@ -39,6 +39,24 @@ func TestPHPDiscoveryUsesNTSx64AndPublishedHash(t *testing.T) {
 		t.Fatalf("wrong packages: %+v", pkgs)
 	}
 }
+func TestPHPDiscoveryAcceptsWindowsRebuildVersions(t *testing.T) {
+	hash := strings.Repeat("b", 64)
+	data := `{"8.2":{"version":"8.2.35-1","nts-vs16-x64":{"zip":{"path":"php-8.2.35-1-nts-Win32-vs16-x64.zip","sha256":"` + hash + `"}}}}`
+	mockHTTP(t, func(r *http.Request) (*http.Response, error) { return httpData(r, 200, []byte(data)), nil })
+	pkgs, err := refreshPHP(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pkgs) != 1 || pkgs[0].ID != "php-8.2.35-1-x64" || pkgs[0].Version != "8.2.35-1" || pkgs[0].SHA256 != hash {
+		t.Fatalf("rebuild release rejected: %+v", pkgs)
+	}
+	if err := validatePackage(pkgs[0]); err != nil {
+		t.Fatal(err)
+	}
+	if compareVersion("8.2.35-1", "8.2.34") <= 0 || compareVersion("8.2.35-1", "8.2.35") <= 0 {
+		t.Fatal("rebuild version did not sort after the release it replaces")
+	}
+}
 func TestRedisHTMLFallbackUsesPlainCygwinDigest(t *testing.T) {
 	hash := strings.Repeat("c", 64)
 	mockHTTP(t, func(r *http.Request) (*http.Response, error) {

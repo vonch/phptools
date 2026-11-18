@@ -164,6 +164,29 @@ func TestInstallPublishesAndUninstallsOwnedPackage(t *testing.T) {
 		t.Fatal("package remains")
 	}
 }
+func TestInstallUsesArchiveWhenReleaseWasMoved(t *testing.T) {
+	data := testZIP(t, map[string]string{"php-cgi.exe": "archived"})
+	pkg := hashedPHP(data)
+	var seen []string
+	mockHTTP(t, func(r *http.Request) (*http.Response, error) {
+		seen = append(seen, r.URL.Path)
+		if strings.Contains(r.URL.Path, "/archives/") {
+			return httpData(r, 200, data), nil
+		}
+		return httpData(r, 404, []byte("missing")), nil
+	})
+	root := filepath.Join(t.TempDir(), "root")
+	installed, err := Install(context.Background(), root, pkg, func(int64, int64, string) {})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if installed.URL != pkg.URL {
+		t.Fatalf("catalog URL changed: %s", installed.URL)
+	}
+	if len(seen) != 2 || !strings.Contains(seen[1], "/archives/php-8.0.30-nts-Win32-vs16-x64.zip") {
+		t.Fatalf("archive was not requested: %v", seen)
+	}
+}
 func TestInstallChecksumFailureCleansStaging(t *testing.T) {
 	data := testZIP(t, map[string]string{"php-cgi.exe": "test"})
 	pkg := hashedPHP(data)

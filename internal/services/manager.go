@@ -578,6 +578,9 @@ func runCommand(ctx context.Context, exe string, args []string, stdin *strings.R
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
+		if missingRuntimeLibrary(err) {
+			return fmt.Errorf("%s 无法启动：系统缺少 Visual C++ 运行库。安装文件已保留。请到设置中的运行依赖，安装 Visual C++ v14 x64 后重新启动该实例", filepath.Base(exe))
+		}
 		output := strings.TrimSpace(stderr.String())
 		if len(output) > 2000 {
 			output = output[:2000]
@@ -585,6 +588,14 @@ func runCommand(ctx context.Context, exe string, args []string, stdin *strings.R
 		return fmt.Errorf("%s 执行失败：%w %s", filepath.Base(exe), err, output)
 	}
 	return nil
+}
+
+func missingRuntimeLibrary(err error) bool {
+	var exit *exec.ExitError
+	if errors.As(err, &exit) && uint32(exit.ExitCode()) == 0xC0000135 {
+		return true
+	}
+	return strings.Contains(strings.ToLower(err.Error()), "0xc0000135")
 }
 
 func samePath(a, b string) bool { return strings.EqualFold(filepath.Clean(a), filepath.Clean(b)) }

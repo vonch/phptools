@@ -12,6 +12,19 @@ import (
 	"phptools/internal/model"
 )
 
+func TestMissingRuntimeLibraryExplainsTheExit(t *testing.T) {
+	if !missingRuntimeLibrary(errString("exit status 0xc0000135")) {
+		t.Fatal("0xc0000135 was not recognized as a missing runtime library")
+	}
+	if missingRuntimeLibrary(errString("exit status 1")) {
+		t.Fatal("ordinary failure treated as a missing runtime library")
+	}
+}
+
+type errString string
+
+func (e errString) Error() string { return string(e) }
+
 func fixturePackage(t *testing.T, root, kind, version string) model.Package {
 	t.Helper()
 	pkg := model.Package{ID: kind + "-fixture", Kind: kind, Version: version, Path: filepath.Join(root, "packages", kind)}

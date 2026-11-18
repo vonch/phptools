@@ -31,9 +31,9 @@ var client = &http.Client{Timeout: 20 * time.Minute, CheckRedirect: func(req *ht
 	}
 	return nil
 }}
-var versionPattern = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
+var versionPattern = regexp.MustCompile(`^\d+\.\d+\.\d+(?:-\d+)?$`)
 var hashPattern = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
-var idPattern = regexp.MustCompile(`^(?:(?:php|mysql|redis)-[0-9]+\.[0-9]+\.[0-9]+-x64|nginx-[0-9]+\.[0-9]+\.[0-9]+-windows)$`)
+var idPattern = regexp.MustCompile(`^(?:(?:php|mysql|redis)-[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9]+)?-x64|nginx-[0-9]+\.[0-9]+\.[0-9]+-windows)$`)
 
 // SeedCatalog contains publisher metadata captured on 2026-10-19. The five
 // historical PHP NTS hashes are explicitly identified as PHPTools audit hashes;
@@ -210,9 +210,8 @@ func sortPackages(p []model.Package) {
 	})
 }
 func compareVersion(a, b string) int {
-	var x, y [3]int
-	fmt.Sscanf(a, "%d.%d.%d", &x[0], &x[1], &x[2])
-	fmt.Sscanf(b, "%d.%d.%d", &y[0], &y[1], &y[2])
+	x, xs := splitVersion(a)
+	y, ys := splitVersion(b)
 	for i := range x {
 		if x[i] > y[i] {
 			return 1
@@ -221,7 +220,24 @@ func compareVersion(a, b string) int {
 			return -1
 		}
 	}
+	if xs > ys {
+		return 1
+	}
+	if xs < ys {
+		return -1
+	}
 	return 0
+}
+
+func splitVersion(v string) ([3]int, int) {
+	base, suffix, _ := strings.Cut(v, "-")
+	var parts [3]int
+	fmt.Sscanf(base, "%d.%d.%d", &parts[0], &parts[1], &parts[2])
+	rebuild := 0
+	if suffix != "" {
+		fmt.Sscanf(suffix, "%d", &rebuild)
+	}
+	return parts, rebuild
 }
 func fetchBytes(ctx context.Context, raw string, limit int64) ([]byte, error) {
 	u, e := url.Parse(raw)
