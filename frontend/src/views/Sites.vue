@@ -437,7 +437,7 @@ const columns = computed(() =>
 <template>
   <div class="sites-page">
   <div class="page-heading">
-    <h1>站点管理</h1>
+    <h1>站点</h1>
     <NButton type="primary" @click="open()"
       ><template #icon
         ><NIcon><AddOutline /></NIcon></template

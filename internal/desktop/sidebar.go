@@ -15,9 +15,9 @@ import (
 
 func defaultSidebar() []model.SidebarItem {
 	return []model.SidebarItem{
+		{Key: "sites", Label: ""}, {Key: "databases", Label: ""},
 		{Key: "overview", Label: ""}, {Key: "packages", Label: ""},
-		{Key: "instances", Label: ""}, {Key: "databases", Label: ""},
-		{Key: "sites", Label: ""}, {Key: "health", Label: ""},
+		{Key: "instances", Label: ""}, {Key: "health", Label: ""},
 		{Key: "logs", Label: ""}, {Key: "settings", Label: ""},
 	}
 }

@@ -11,6 +11,13 @@ import (
 	"phptools/internal/model"
 )
 
+func TestDefaultSidebarPutsSitesAndDatabasesFirst(t *testing.T) {
+	items := defaultSidebar()
+	if len(items) < 2 || items[0].Key != "sites" || items[1].Key != "databases" {
+		t.Fatalf("default menu order: %+v", items)
+	}
+}
+
 func TestSidebarPersistsWithoutEnvironment(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "中文 settings")
 	notified := 0

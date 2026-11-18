@@ -402,7 +402,7 @@ const accountColumns: DataTableColumns<DatabaseAccount> = [
 
 <template>
   <div class="page-heading">
-    <h1>数据库管理</h1>
+    <h1>数据库</h1>
     <div class="heading-actions">
       <NButton :disabled="locked" :loading="tab === 'accounts' ? accountLoading : databaseLoading" @click="refreshLists()">刷新列表</NButton>
       <NButton v-if="tab === 'databases'" type="primary" :disabled="catalogBusy" @click="openModal('create-db')">创建数据库</NButton>

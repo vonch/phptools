@@ -30,7 +30,7 @@ async function expectNames(expected) {
   }
 }
 async function openSites() {
-  await page.locator(".sidebar").getByText("站点管理", { exact: true }).click();
+  await page.locator(".sidebar").getByText("站点", { exact: true }).click();
   await page.locator(".site-table tbody .site-name-label strong").first().waitFor();
   await page.waitForFunction(() => !document.querySelector('button[aria-label="显示列"]')?.disabled);
   await page.evaluate(async () => { window.qaRuntime = await import("/wails/runtime.js"); });
