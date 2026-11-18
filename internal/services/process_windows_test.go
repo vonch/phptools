@@ -226,7 +226,10 @@ func TestWindowsExitedIdentityIsClearedBeforeFailedStart(t *testing.T) {
 				t.Fatalf("expected an occupied-port error, got %+v %v", got, err)
 			}
 			// The desktop persists Start's return value even when Start fails.
-			assertClearedProcessIdentity(t, got)
+			// The occupied port stays visible, and the exited process identity does not.
+			if got.PID != 0 || got.ProcessCreated != 0 || got.State != "error" || !strings.Contains(got.Error, "端口") {
+				t.Fatalf("failed start did not keep a cleared error: %+v", got)
+			}
 			if i.State != "error" || i.PID == 0 {
 				t.Fatal("test lost the original stale input")
 			}

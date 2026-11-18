@@ -176,7 +176,7 @@ func (a *App) StartInstalledPHP() (string, error) {
 	return a.task("start-php", "php", func(ctx context.Context, id string) error {
 		a.opMu.Lock()
 		defer a.opMu.Unlock()
-		if err := a.ensureInstalledPHPInstances(ctx); err != nil {
+		if err := a.ensureServiceInstances(ctx); err != nil {
 			return err
 		}
 		var failures []error
@@ -196,6 +196,10 @@ func (a *App) StartInstalledPHP() (string, error) {
 }
 
 func (a *App) ensureInstalledPHPInstances(ctx context.Context) error {
+	return a.ensureServiceInstances(ctx)
+}
+
+func (a *App) ensureServiceInstances(ctx context.Context) error {
 	a.mu.RLock()
 	pkgs := append([]model.Package{}, a.data.Packages...)
 	instances := append([]model.Instance{}, a.data.Instances...)
@@ -204,13 +208,13 @@ func (a *App) ensureInstalledPHPInstances(ctx context.Context) error {
 	has := map[string]bool{}
 	for _, inst := range instances {
 		used[inst.Port] = true
-		if inst.Kind == "php" {
-			has[inst.PackageID] = true
-		}
+		has[inst.PackageID] = true
 	}
-	port := 9100
+	next := map[string]int{"php": 9100, "mysql": 3307, "nginx": 8081, "redis": 6380}
+	label := map[string]string{"php": "PHP", "mysql": "MySQL", "nginx": "Nginx", "redis": "Redis"}
 	for _, pkg := range pkgs {
-		if pkg.Kind != "php" || pkg.Path == "" || has[pkg.ID] {
+		port, ok := next[pkg.Kind]
+		if !ok || pkg.Path == "" || has[pkg.ID] {
 			continue
 		}
 		if err := ctx.Err(); err != nil {
@@ -220,9 +224,9 @@ func (a *App) ensureInstalledPHPInstances(ctx context.Context) error {
 			port++
 		}
 		if port > 65535 {
-			return errors.New("没有可用端口来启动已安装的 PHP")
+			return errors.New("没有可用端口来创建 " + label[pkg.Kind] + " 实例")
 		}
-		instance, err := a.manager.Create(ctx, pkg, model.InstanceInput{Name: "PHP " + pkg.Version, PackageID: pkg.ID, Port: port})
+		instance, err := a.manager.Create(ctx, pkg, model.InstanceInput{Name: label[pkg.Kind] + " " + pkg.Version, PackageID: pkg.ID, Port: port})
 		if err != nil {
 			return err
 		}
@@ -231,7 +235,7 @@ func (a *App) ensureInstalledPHPInstances(ctx context.Context) error {
 		}
 		used[port] = true
 		has[pkg.ID] = true
-		port++
+		next[pkg.Kind] = port + 1
 	}
 	return nil
 }

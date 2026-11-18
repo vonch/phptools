@@ -204,17 +204,17 @@ func (a *App) InstallPackage(packageID string) (string, error) {
 		if err := a.storeInstalledPackage(p); err != nil {
 			return err
 		}
-		if p.Kind != "php" {
+		if _, ok := map[string]bool{"php": true, "mysql": true, "nginx": true, "redis": true}[p.Kind]; !ok {
 			return nil
 		}
 		a.opMu.Lock()
 		defer a.opMu.Unlock()
-		if err := a.ensureInstalledPHPInstances(ctx); err != nil {
+		if err := a.ensureServiceInstances(ctx); err != nil {
 			return err
 		}
 		var failures []error
 		for _, v := range a.orderedInstances(false) {
-			if v.Kind == "php" && v.PackageID == p.ID {
+			if v.PackageID == p.ID {
 				if err := a.start(ctx, v.ID); err != nil {
 					failures = append(failures, fmt.Errorf("%s：%w", v.Name, err))
 				}

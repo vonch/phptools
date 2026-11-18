@@ -12,6 +12,26 @@ import (
 	"phptools/internal/model"
 )
 
+func TestFailedStartStaysVisibleAndCanBeRetried(t *testing.T) {
+	root := t.TempDir()
+	m := New(root, nil, nil)
+	pkg := fixturePackage(t, root, "php", "8.3.1")
+	instance, err := m.Create(context.Background(), pkg, model.InstanceInput{Name: "php", PackageID: pkg.ID, Port: 19991})
+	if err != nil {
+		t.Fatal(err)
+	}
+	instance.State = "error"
+	instance.Error = "旧错误"
+	instance.PID = 0
+	got, err := m.Start(context.Background(), pkg, instance)
+	if err == nil || strings.Contains(err.Error(), "旧错误") {
+		t.Fatalf("start stayed on the old error: %v", err)
+	}
+	if got.PID != 0 || got.State != "error" || got.Error == "" || strings.Contains(got.Error, "旧错误") {
+		t.Fatalf("failed start was not recorded for retry: %+v", got)
+	}
+}
+
 func TestMissingRuntimeLibraryExplainsTheExit(t *testing.T) {
 	if !missingRuntimeLibrary(errString("exit status 0xc0000135")) {
 		t.Fatal("0xc0000135 was not recognized as a missing runtime library")

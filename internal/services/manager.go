@@ -130,7 +130,7 @@ func (m *Manager) Start(ctx context.Context, pkg model.Package, i model.Instance
 		return i, errors.New("安装包与实例不匹配")
 	}
 	i = m.inspect(i)
-	if i.PID != 0 || i.State == "error" {
+	if i.PID != 0 {
 		if i.State == "running" {
 			if i.Kind == "mysql" {
 				dir, _ := m.instanceDir(i.ID)
@@ -145,11 +145,14 @@ func (m *Manager) Start(ctx context.Context, pkg model.Package, i model.Instance
 		}
 		return i, errors.New(i.Error)
 	}
+	if i.State == "error" {
+		return i, errors.New(i.Error)
+	}
 	if !within(m.root, pkg.Path) {
-		return i, errors.New("组件目录必须位于 PHPTools 环境目录内")
+		return markStartFailure(i, errors.New("组件目录必须位于 PHPTools 环境目录内"))
 	}
 	if err := availablePort(i.Port); err != nil {
-		return i, err
+		return markStartFailure(i, err)
 	}
 	exe, err := findExecutable(pkg)
 	if err != nil {
@@ -172,28 +175,28 @@ func (m *Manager) Start(ctx context.Context, pkg model.Package, i model.Instance
 			}
 			var p processRecord
 			if json.Unmarshal(b, &p) == nil && strings.EqualFold(filepath.Base(p.Executable), "nginx.exe") && verifyProcess(p) == nil {
-				return i, errors.New("已有 Nginx 实例运行，请先停止它")
+				return markStartFailure(i, errors.New("已有 Nginx 实例运行，请先停止它"))
 			}
 		}
 	}
 	if err = m.validateConfig(ctx, pkg, i); err != nil {
-		return i, err
+		return markStartFailure(i, err)
 	}
 	if i.Kind == "mysql" {
 		i, err = m.prepareMySQL(ctx, pkg, i)
 		if err != nil {
-			return i, err
+			return markStartFailure(i, err)
 		}
 	}
 	args := startArgs(i)
 	i, err = m.launch(i, args, nil)
 	if err != nil {
-		return i, err
+		return markStartFailure(i, err)
 	}
 	if err = m.waitReady(ctx, i, 30*time.Second); err != nil {
 		current := m.inspect(i)
 		if current.PID == 0 {
-			return current, fmt.Errorf("启动失败，请查看 %s：%w", i.LogPath, err)
+			return markStartFailure(current, fmt.Errorf("启动失败，请查看 %s：%w", i.LogPath, err))
 		}
 		current.State = "error"
 		current.Error = "启动就绪检查失败；进程已保留，可安全重试停止：" + err.Error()
@@ -203,6 +206,14 @@ func (m *Manager) Start(ctx context.Context, pkg model.Package, i model.Instance
 	i.State = "running"
 	i.Error = ""
 	err = m.persist(i)
+	return i, err
+}
+
+func markStartFailure(i model.Instance, err error) (model.Instance, error) {
+	if i.PID == 0 {
+		i.State = "error"
+		i.Error = err.Error()
+	}
 	return i, err
 }
 
