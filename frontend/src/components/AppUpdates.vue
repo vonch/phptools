@@ -32,9 +32,6 @@ function cancel() {
 function formatTime(value: string) {
   return new Date(value).toLocaleString("zh-CN", { hour12: false });
 }
-function openSite() {
-  void api.OpenOfficialSite().catch((error: unknown) => message.error(errorText(error), { duration: 7000 }));
-}
 function openFeedback() {
   void api.OpenFeedback().catch((error: unknown) => message.error(errorText(error), { duration: 7000 }));
 }
@@ -78,13 +75,6 @@ function openFeedback() {
       <NButton v-if="updateTask" size="small" :loading="updateCancelling" :disabled="updateCancelling" @click="cancel">取消升级</NButton>
     </div>
     <p v-if="updateInfo?.checkedAt" class="footnote">最近检查：{{ formatTime(updateInfo.checkedAt) }}</p>
-    <div class="setting-row">
-      <div>
-        <strong>软件官网</strong>
-        <p class="muted">介绍、更新日志和下载都在 phptools.wuyouzhilian.cn。</p>
-      </div>
-      <NButton @click="openSite">打开官网</NButton>
-    </div>
     <div class="setting-row last">
       <div>
         <strong>提交建议或 BUG</strong>
