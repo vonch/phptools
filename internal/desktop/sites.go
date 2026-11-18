@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"path/filepath"
@@ -11,6 +12,22 @@ import (
 	"phptools/internal/services"
 	"phptools/internal/sites"
 )
+
+func (a *App) SelectSiteProjectDirectory() (string, error) {
+	if err := a.needRoot(); err != nil {
+		return "", err
+	}
+	if a.hooks.PickDirectory == nil {
+		return "", errors.New("目录选择器尚未初始化")
+	}
+	a.mu.RLock()
+	dir := filepath.Join(a.data.Settings.Root, "sites")
+	a.mu.RUnlock()
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return "", err
+	}
+	return a.hooks.PickDirectory("选择站点项目目录", dir)
+}
 
 func (a *App) SelectSiteEntry(projectRoot string) (model.SiteEntrySelection, error) {
 	result := model.SiteEntrySelection{}

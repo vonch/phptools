@@ -263,7 +263,7 @@ function setRoot(value: string) {
 async function chooseRoot() {
   const form = input.value;
   const root = form.root;
-  const path = await run(() => api.SelectDirectory("选择站点项目目录"));
+  const path = await run(() => api.SelectSiteProjectDirectory());
   if (path && input.value === form && input.value.root === root) setRoot(path);
 }
 async function chooseEntry() {

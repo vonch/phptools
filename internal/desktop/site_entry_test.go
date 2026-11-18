@@ -6,6 +6,27 @@ import (
 	"testing"
 )
 
+func TestSiteProjectPickerStartsInSites(t *testing.T) {
+	a := testApp(t)
+	var title, initial string
+	a.hooks.PickDirectory = func(gotTitle, gotInitial string) (string, error) {
+		title, initial = gotTitle, gotInitial
+		return filepath.Join(gotInitial, "shop"), nil
+	}
+	got, err := a.SelectSiteProjectDirectory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(a.data.Settings.Root, "sites")
+	if title != "选择站点项目目录" || initial != want || got != filepath.Join(want, "shop") {
+		t.Fatalf("picker title %q initial %q result %q", title, initial, got)
+	}
+	info, err := os.Stat(want)
+	if err != nil || !info.IsDir() {
+		t.Fatal(err)
+	}
+}
+
 func TestEntryPickerDistinguishesCancelFromProjectRoot(t *testing.T) {
 	root := t.TempDir()
 	child := filepath.Join(root, "public")

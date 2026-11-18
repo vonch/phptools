@@ -45,6 +45,7 @@ interface DesktopAPI {
   SaveSidebar(items: SidebarItem[]): Promise<void>;
   SaveSiteView(preferences: SiteViewPreferences): Promise<void>;
   SelectDirectory(title: string): Promise<string>;
+  SelectSiteProjectDirectory(): Promise<string>;
   SelectSiteEntry(projectRoot: string): Promise<SiteEntrySelection>;
   GetRewritePresets(): Promise<RewritePreset[] | null>;
   SetRoot(root: string): Promise<void>;
