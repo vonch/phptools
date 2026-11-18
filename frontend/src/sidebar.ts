@@ -10,9 +10,9 @@ const icon = (component: typeof GridOutline) => () =>
   h(NIcon, null, { default: () => h(component) });
 
 export const pageCatalog = [
+  { key: "overview", label: "概览", icon: icon(GridOutline) },
   { key: "sites", label: "站点", icon: icon(GlobeOutline) },
   { key: "databases", label: "数据库", icon: icon(ServerOutline) },
-  { key: "overview", label: "概览", icon: icon(GridOutline) },
   { key: "packages", label: "组件中心", icon: icon(CubeOutline) },
   { key: "instances", label: "服务实例", icon: icon(AppsOutline) },
   { key: "health", label: "检测", icon: icon(PulseOutline) },

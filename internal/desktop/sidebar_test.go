@@ -11,9 +11,9 @@ import (
 	"phptools/internal/model"
 )
 
-func TestDefaultSidebarPutsSitesAndDatabasesFirst(t *testing.T) {
+func TestDefaultSidebarPutsOverviewFirst(t *testing.T) {
 	items := defaultSidebar()
-	if len(items) < 2 || items[0].Key != "sites" || items[1].Key != "databases" {
+	if len(items) < 3 || items[0].Key != "overview" || items[1].Key != "sites" || items[2].Key != "databases" {
 		t.Fatalf("default menu order: %+v", items)
 	}
 }
