@@ -12,7 +12,7 @@
 
 - 凡是对用户可见的更新，做完后都要同时发到官网和 GitHub，不必再等用户说「提交」。
 - 官网是 https://phptools.wuyouzhilian.cn 。网站文件传到 `/www/wwwroot/phptools.wuyouzhilian.cn`，`chown www:www` 且 `chmod 644`。软件升级另发新版本：`app.go`、`frontend/package.json`、`frontend/package-lock.json` 的版本号必须一致，且高于当前线上版本；构建时不要结束正在运行的 PHPTools。不要改已发布版本的文件、SHA-256、大小、发布时间和说明，也不要下载线上的 `PHPTools.exe`。
-- GitHub 仓库是 https://github.com/vonch/phptools ，推送到 `main`。不要提交网站账号配置、凭据、安装包和 `dist`。
+- GitHub 仓库是 https://github.com/vonch/phptools ，推送到 `main`。不要提交网站账号配置、凭据、安装包和 `dist`。软件发新版本时，同时创建 GitHub Release，标签为 `v` 加版本号。上传本次构建的 `PHPTools.exe` 和 `windows-x64.zip`。Release 说明写上本次更新说明，以及官网下载地址 `https://phptools.wuyouzhilian.cn/PHPTools.exe`。已发布的 Release 文件不要替换。
 - 只改规则或内部说明、用户在官网和软件里看不到的，只推 GitHub，不发新版本。
 
 ## 临时产物与测试清理

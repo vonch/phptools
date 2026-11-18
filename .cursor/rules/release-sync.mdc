@@ -11,4 +11,5 @@ alwaysApply: true
 - 软件升级必须升版本。`internal/desktop/app.go` 的 `appVersion`、`frontend/package.json` 和 `frontend/package-lock.json` 的两处版本号保持一致，并且高于当前线上版本。构建时不要结束正在运行的 PHPTools。
 - 已发布版本的程序、SHA-256、大小、发布时间和更新说明保持不动。不要下载线上的 `PHPTools.exe`。
 - GitHub：https://github.com/vonch/phptools ，推送到 `main`。不要提交网站账号配置、凭据、安装包和 `dist`。
+- 软件发新版本时，同时创建 GitHub Release，标签为 `v` 加版本号。上传本次构建的 `PHPTools.exe` 和 `windows-x64.zip`。Release 说明写上本次更新说明，以及官网下载地址 `https://phptools.wuyouzhilian.cn/PHPTools.exe`。已发布的 Release 文件不要替换。
 - 只改规则或内部说明、用户看不到的内容，只推 GitHub，不发新版本。

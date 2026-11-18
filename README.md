@@ -6,6 +6,8 @@ Windows 上的本地 PHP 开发环境。在一个窗口里管理 Nginx、PHP、M
 
 官网：https://phptools.wuyouzhilian.cn
 
+下载：https://phptools.wuyouzhilian.cn/PHPTools.exe
+
 ## 界面
 
 概览里看服务和已安装的组件。
