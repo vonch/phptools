@@ -134,6 +134,15 @@ func TestRuntimeInstallerRejectsUntrustedInput(t *testing.T) {
 			t.Fatal(url, err)
 		}
 	}
+	for _, id := range []string{"", "vc11", "vc12", "webview2", "https://aka.ms/vs/17/release/vc_redist.x64.exe"} {
+		if _, err := DownloadURL(id); err == nil {
+			t.Fatal(id)
+		}
+	}
+	url, err := DownloadURL("vc14")
+	if err != nil || url != "https://aka.ms/vs/17/release/vc_redist.x64.exe" {
+		t.Fatal(url, err)
+	}
 }
 
 func TestDLLNamesAndDamagedPackage(t *testing.T) {

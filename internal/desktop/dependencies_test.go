@@ -23,6 +23,13 @@ func TestDependencyCheckBeforeRootAndOfficialInstallerOnly(t *testing.T) {
 	if err = a.OpenRuntimeInstaller("vc11"); err != nil || !strings.HasPrefix(opened, "https://www.microsoft.com/") {
 		t.Fatal(opened, err)
 	}
+	opened = ""
+	if err = a.OpenRuntimeDownload("https://aka.ms/vs/17/release/vc_redist.x64.exe"); err == nil || opened != "" {
+		t.Fatal("arbitrary download reached launcher")
+	}
+	if err = a.OpenRuntimeDownload("vc14"); err != nil || opened != "https://aka.ms/vs/17/release/vc_redist.x64.exe" {
+		t.Fatal(opened, err)
+	}
 	want := errors.New("browser unavailable")
 	a.hooks.OpenURL = func(string) error { return want }
 	if err = a.OpenRuntimeInstaller("webview2"); !errors.Is(err, want) {

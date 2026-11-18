@@ -17,7 +17,14 @@ func (a *App) GetRuntimeDependencies() model.DependencyReport {
 }
 
 func (a *App) OpenRuntimeInstaller(id string) error {
-	url, err := prerequisites.InstallURL(id)
+	return a.openRuntimeURL(prerequisites.InstallURL(id))
+}
+
+func (a *App) OpenRuntimeDownload(id string) error {
+	return a.openRuntimeURL(prerequisites.DownloadURL(id))
+}
+
+func (a *App) openRuntimeURL(url string, err error) error {
 	if err != nil {
 		return err
 	}

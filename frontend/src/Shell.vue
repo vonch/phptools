@@ -14,6 +14,7 @@ import {
   NProgress,
   NSpin,
   NTag,
+  useDialog,
 } from "naive-ui";
 import {
   RefreshOutline,
@@ -37,6 +38,7 @@ import {
   type Page,
 } from "./types";
 import { useAction } from "./composables";
+import { runtimeDownloadOffer } from "./runtimePrompt";
 import { defaultSidebar, pageInfo, sidebarLabel } from "./sidebar";
 import Overview from "./views/Overview.vue";
 import Packages from "./views/Packages.vue";
@@ -49,6 +51,24 @@ import Health from "./views/Health.vue";
 import { startAppUpdateChecks, updateAvailable, updateInfo } from "./updateState";
 
 const { busy, run, message } = useAction();
+const dialog = useDialog();
+let runtimePromptOpen = false;
+function offerRuntimeDownload(error: string) {
+  const id = runtimeDownloadOffer(error);
+  if (!id || runtimePromptOpen) return false;
+  runtimePromptOpen = true;
+  dialog.warning({
+    title: "缺少运行库",
+    content: "PHP 无法启动，系统缺少 Visual C++ v14 x64。是否下载微软官方安装程序？安装完成后，回到服务实例重新启动。",
+    positiveText: "下载",
+    negativeText: "稍后",
+    onPositiveClick: () => run(() => api.OpenRuntimeDownload(id)),
+    onAfterLeave: () => {
+      runtimePromptOpen = false;
+    },
+  });
+  return true;
+}
 const sidebarItems = computed(() => snapshot.value?.sidebar ?? defaultSidebar());
 const pages = computed(() =>
   sidebarItems.value
@@ -89,7 +109,9 @@ watch(tasks, (value) => {
       previous !== task.state &&
       task.state === "failed"
     ) {
-      message.error(task.error || "后台任务失败", { duration: 10000 });
+      if (!offerRuntimeDownload(task.error || "")) {
+        message.error(task.error || "后台任务失败", { duration: 10000 });
+      }
       state.taskPanel = true;
     }
     if (previous && previous !== task.state && task.state === "completed")

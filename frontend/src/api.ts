@@ -35,6 +35,7 @@ export interface FeedbackReport {
 interface DesktopAPI {
   GetRuntimeDependencies(): Promise<DependencyReport>;
   OpenRuntimeInstaller(id: string): Promise<void>;
+  OpenRuntimeDownload(id: string): Promise<void>;
   GetState(): Promise<Snapshot>;
   GetAutoStart(): Promise<AutoStartStatus>;
   SetAutoStart(enabled: boolean): Promise<AutoStartStatus>;
