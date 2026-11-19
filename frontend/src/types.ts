@@ -94,6 +94,7 @@ export interface Site {
   entry: string;
   port: number;
   https: boolean;
+  forceHttps?: boolean;
   phpInstanceId: string;
   phpPathInfo?: boolean;
   enabled: boolean;

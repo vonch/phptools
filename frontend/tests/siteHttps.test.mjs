@@ -11,6 +11,15 @@ test("editing a site created with HTTPS shows the applied port and addresses", (
     secondDomain: "api.shop.test",
   }, true);
   assert.match(status.text, /HTTP 80 保持不变/);
+  const redirect = httpsFormStatus({
+    id: "shop",
+    https: true,
+    forceHttps: true,
+    port: 80,
+    domain: "shop.test",
+    secondDomain: "api.shop.test",
+  }, true);
+  assert.match(redirect.text, /HTTP 80 会跳转到 HTTPS 443/);
   assert.match(status.text, /HTTPS 443/);
   assert.match(status.text, /第一域名和第二域名/);
   assert.deepEqual(status.addresses, ["https://shop.test", "https://api.shop.test"]);

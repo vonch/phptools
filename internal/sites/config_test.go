@@ -160,6 +160,40 @@ func TestSecondDomainIsOptionalAndShared(t *testing.T) {
 	}
 }
 
+func TestHTTPRedirectsToHTTPSAndKeepsTheChallenge(t *testing.T) {
+	root := t.TempDir()
+	site := model.Site{ID: "shop", Domain: "shop.com", SecondDomain: "www.shop.com", Root: root, Port: 80, HTTPS: true, ForceHTTPS: true, Enabled: true}
+	rendered := Render(root, site, &model.Instance{Port: 9100})
+	redirect := strings.Index(rendered, "return 301 https://$host$request_uri;")
+	challenge := strings.Index(rendered, "location ^~ /.well-known/acme-challenge/")
+	httpsListen := strings.Index(rendered, "listen 0.0.0.0:443 ssl;")
+	if challenge < 0 || redirect < 0 || httpsListen < 0 || challenge > redirect || redirect > httpsListen {
+		t.Fatal(rendered)
+	}
+	if strings.Count(rendered, "listen 0.0.0.0:80;") != 1 || strings.Count(rendered, "fastcgi_pass") != 1 || strings.Contains(rendered[:redirect], "try_files") {
+		t.Fatal(rendered)
+	}
+	if !strings.Contains(rendered, "server_name shop.com www.shop.com;") {
+		t.Fatal(rendered)
+	}
+	site.ForceHTTPS = false
+	plain := Render(root, site, nil)
+	if strings.Contains(plain, "return 301") || strings.Count(plain, "listen ") != 2 {
+		t.Fatal(plain)
+	}
+	site.Port = 443
+	site.ForceHTTPS = true
+	if _, err := Validate(site, nil, nil); err == nil || !strings.Contains(err.Error(), "没有可跳转的 HTTP 端口") {
+		t.Fatal(err)
+	}
+	site.HTTPS = false
+	site.Port = 80
+	validated, err := Validate(site, nil, nil)
+	if err != nil || validated.ForceHTTPS {
+		t.Fatalf("%+v %v", validated, err)
+	}
+}
+
 func TestPHPPathInfoIsExplicitAndPreservesCustomLocations(t *testing.T) {
 	site := model.Site{ID: "path", Domain: "path.test", Root: t.TempDir(), Port: 8081,
 		Rewrite: "location /web/ { try_files $uri $uri/ /web/index.html; }\nlocation / { index index.php index.html; }"}

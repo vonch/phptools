@@ -137,6 +137,7 @@ const emptySite = (): Site => ({
   entry: "",
   port: 80,
   https: false,
+  forceHttps: false,
   phpInstanceId: "",
   phpPathInfo: false,
   enabled: true,
@@ -242,6 +243,14 @@ function updateDomain(value: string) {
 }
 function updateSecondDomain(value: string) {
   input.value.secondDomain = value;
+}
+function setHttps(value: boolean) {
+  input.value.https = value;
+  if (!value) input.value.forceHttps = false;
+}
+function setPort(value: number | null) {
+  input.value.port = value ?? 80;
+  if (input.value.port === 443) input.value.forceHttps = false;
 }
 function setCreateDatabase(value: boolean) {
   createDatabase.value = value;
@@ -612,10 +621,11 @@ const columns = computed(() =>
           </NFormItem>
           <NFormItem :label="input.https && input.port === 443 ? 'HTTPS 端口' : 'HTTP 端口'" required>
             <NInputNumber
-              v-model:value="input.port"
+              :value="input.port"
               :min="1"
               :max="65535"
               :precision="0"
+              @update:value="setPort"
             />
           </NFormItem>
         </div>
@@ -664,7 +674,14 @@ const columns = computed(() =>
             <p class="muted">{{ httpsStatus.text }}</p>
             <p v-for="address in httpsStatus.addresses" :key="address" class="muted mono">{{ address }}</p>
           </div>
-          <NSwitch v-model:value="input.https" />
+          <NSwitch v-model:value="input.https" @update:value="setHttps" />
+        </div>
+        <div v-if="input.https" class="site-switch-row">
+          <div>
+            <span class="site-switch-label">HTTP 强制跳转 HTTPS</span>
+            <p class="muted">{{ input.port === 443 ? "当前端口已是 HTTPS，没有可跳转的 HTTP 端口。请把端口改为 80。" : "用 HTTP 访问时跳转到 HTTPS。证书验证地址仍然从 HTTP 提供。" }}</p>
+          </div>
+          <NSwitch v-model:value="input.forceHttps" :disabled="input.port === 443" />
         </div>
       </section>
       <section v-if="mode === 'php'" class="site-form-section">

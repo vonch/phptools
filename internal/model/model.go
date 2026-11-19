@@ -108,6 +108,7 @@ type Site struct {
 	Entry         string `json:"entry"`
 	Port          int    `json:"port"`
 	HTTPS         bool   `json:"https"`
+	ForceHTTPS    bool   `json:"forceHttps"`
 	PHPInstanceID string `json:"phpInstanceId"`
 	PHPPathInfo   bool   `json:"phpPathInfo"`
 	Enabled       bool   `json:"enabled"`

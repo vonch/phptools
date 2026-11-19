@@ -1,6 +1,7 @@
 export interface HTTPSFormSite {
   id: string;
   https: boolean;
+  forceHttps?: boolean;
   port: number | null;
   domain: string;
   secondDomain?: string;
@@ -20,6 +21,12 @@ export function httpsFormStatus(site: HTTPSFormSite, openedHttps: boolean): HTTP
     if (port === 443) {
       return { text: `端口 443 已改为 HTTPS，本地证书包含${names}。`, addresses };
     }
+    if (site.forceHttps) {
+      return {
+        text: `HTTP ${port} 会跳转到 HTTPS 443，本地证书包含${names}。`,
+        addresses,
+      };
+    }
     return {
       text: `HTTP ${port} 保持不变，已额外监听 HTTPS 443，本地证书包含${names}。`,
       addresses,
@@ -36,7 +43,9 @@ export function httpsFormStatus(site: HTTPSFormSite, openedHttps: boolean): HTTP
   }
   if (site.https) {
     return {
-      text: "保存后为填写的域名生成证书，并增加 443 端口。原来的 HTTP 端口仍可访问。首次开启时，Windows 会询问是否信任本环境的证书颁发机构。",
+      text: site.forceHttps
+        ? `保存后 HTTP ${port} 会跳转到 HTTPS 443。首次开启时，Windows 会询问是否信任本环境的证书颁发机构。`
+        : "保存后为填写的域名生成证书，并增加 443 端口。原来的 HTTP 端口仍可访问。首次开启时，Windows 会询问是否信任本环境的证书颁发机构。",
       addresses,
     };
   }
