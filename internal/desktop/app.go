@@ -55,7 +55,7 @@ type App struct {
 	activity     sites.ActivityReader
 }
 
-const appVersion = "0.1.54"
+const appVersion = "0.1.55"
 
 func New(configDir string, hooks Hooks) (*App, error) {
 	if configDir == "" {
@@ -143,6 +143,9 @@ func (a *App) open(root string) error {
 	a.db = db
 	a.data.Settings.Root = db.Root
 	a.data.Instances = instances
+	for i := range siteList {
+		siteList[i].Rewrite = sites.UpgradeRewrite(siteList[i].Rewrite)
+	}
 	a.data.Sites = siteList
 	a.manager = services.New(db.Root, a.saveInstance, a.getSecret)
 	return nil

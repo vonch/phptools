@@ -78,6 +78,7 @@ func Validate(site model.Site, others []model.Site, instances []model.Instance) 
 	if strings.ContainsRune(site.Rewrite, 0) {
 		return site, errors.New("伪静态规则包含无效字符")
 	}
+	site.Rewrite = UpgradeRewrite(site.Rewrite)
 	if site.Enabled && (site.HTTPS || site.Port == 443) {
 		for _, v := range others {
 			if v.ID != site.ID && v.Enabled && sharesDomain(site, v) && (v.HTTPS || v.Port == 443) {
@@ -95,15 +96,15 @@ func Render(root string, site model.Site, php *model.Instance) string {
 	if site.HTTPS && idPattern.MatchString(site.ID) {
 		cert, key := certificatePaths(root, site.ID)
 		if site.Port != 443 {
-			fmt.Fprintf(&b, "    listen 127.0.0.1:%d;\n", site.Port)
+			fmt.Fprintf(&b, "    listen 0.0.0.0:%d;\n", site.Port)
 		}
-		fmt.Fprintf(&b, "    listen 127.0.0.1:443 ssl;\n    ssl_certificate %s;\n    ssl_certificate_key %s;\n    ssl_protocols TLSv1.2 TLSv1.3;\n", quote(cert), quote(key))
+		fmt.Fprintf(&b, "    listen 0.0.0.0:443 ssl;\n    ssl_certificate %s;\n    ssl_certificate_key %s;\n    ssl_protocols TLSv1.2 TLSv1.3;\n", quote(cert), quote(key))
 	} else {
-		fmt.Fprintf(&b, "    listen 127.0.0.1:%d;\n", site.Port)
+		fmt.Fprintf(&b, "    listen 0.0.0.0:%d;\n", site.Port)
 	}
 	fmt.Fprintf(&b, "    server_name %s;\n    root %s;\n    index index.php index.html;\n    access_log %s;\n    error_log %s;\n", serverName(site), quote(filepath.Join(site.Root, site.Entry)), quote(filepath.Join(root, "logs", site.ID+"-access.log")), quote(filepath.Join(root, "logs", site.ID+"-error.log")))
 	if strings.TrimSpace(site.Rewrite) != "" {
-		fmt.Fprintf(&b, "    # Custom rules\n%s\n", site.Rewrite)
+		fmt.Fprintf(&b, "    # Custom rules\n%s\n", UpgradeRewrite(site.Rewrite))
 	} else if php != nil {
 		b.WriteString("    location / { try_files $uri $uri/ /index.php?$query_string; }\n")
 	} else {

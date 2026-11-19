@@ -182,3 +182,27 @@ func TestPHPPathInfoIsExplicitAndPreservesCustomLocations(t *testing.T) {
 		t.Fatal("PATH_INFO flag enabled PHP without an instance")
 	}
 }
+
+func TestThinkPHP6RewriteKeepsExistingDirectories(t *testing.T) {
+	old := "# ThinkPHP 6 / 8\r\nlocation / {\r\n    if (!-f $request_filename) {\r\n        rewrite ^/(.*)$ /index.php?s=/$1 last;\r\n    }\r\n}"
+	site := model.Site{ID: "tp", Domain: "tp.test", Root: t.TempDir(), Port: 8081, Rewrite: old}
+	checked, err := Validate(site, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(checked.Rewrite, "!-f $request_filename") || !strings.Contains(checked.Rewrite, "if (!-e $request_filename)") {
+		t.Fatal(checked.Rewrite)
+	}
+	rendered := Render(site.Root, site, nil)
+	if strings.Contains(rendered, "!-f $request_filename") || !strings.Contains(rendered, "if (!-e $request_filename)") {
+		t.Fatal(rendered)
+	}
+	custom := "location / {\n    if (!-f $request_filename) {\n        rewrite ^ /custom.php last;\n    }\n}"
+	kept, err := Validate(model.Site{ID: "custom", Domain: "custom.test", Root: site.Root, Port: 8082, Rewrite: custom}, []model.Site{checked}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if kept.Rewrite != custom || !strings.Contains(Render(site.Root, kept, nil), "if (!-f $request_filename)") {
+		t.Fatal(kept.Rewrite)
+	}
+}

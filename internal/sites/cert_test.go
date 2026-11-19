@@ -123,8 +123,9 @@ func TestRenderHTTPSUsesGeneratedCertificate(t *testing.T) {
 	rendered := Render(root, site, &model.Instance{Port: 9100})
 	cert, key := certificatePaths(root, site.ID)
 	for _, want := range []string{
-		"listen 127.0.0.1:8080;",
-		"listen 127.0.0.1:443 ssl;",
+		"listen 0.0.0.0:8080;",
+		"listen 0.0.0.0:443 ssl;",
+		"fastcgi_pass 127.0.0.1:9100;",
 		"ssl_certificate \"" + filepath.ToSlash(cert) + "\"",
 		"ssl_certificate_key \"" + filepath.ToSlash(key) + "\"",
 		"fastcgi_param HTTPS $https if_not_empty;",
@@ -135,13 +136,13 @@ func TestRenderHTTPSUsesGeneratedCertificate(t *testing.T) {
 	}
 	site.Port = 443
 	secureOnly := Render(root, site, nil)
-	if strings.Contains(secureOnly, "listen 127.0.0.1:80;") || strings.Count(secureOnly, "listen ") != 1 {
+	if strings.Contains(secureOnly, "listen 0.0.0.0:80;") || !strings.Contains(secureOnly, "listen 0.0.0.0:443 ssl;") || strings.Count(secureOnly, "listen ") != 1 {
 		t.Fatal(secureOnly)
 	}
 	site.HTTPS = false
 	site.Port = 8080
 	plain := Render(root, site, &model.Instance{Port: 9100})
-	if strings.Contains(plain, "ssl_certificate") || strings.Contains(plain, "fastcgi_param HTTPS") {
+	if strings.Contains(plain, "ssl_certificate") || strings.Contains(plain, "fastcgi_param HTTPS") || !strings.Contains(plain, "listen 0.0.0.0:8080;") || strings.Contains(plain, "listen 127.0.0.1:") {
 		t.Fatal(plain)
 	}
 }
