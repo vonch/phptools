@@ -72,6 +72,10 @@ func main() {
 			dialog.SetOptions(&application.SaveFileDialogOptions{Title: "导出数据库为 SQL 文件", Filename: filename, CanCreateDirectories: true})
 			return dialog.AddFilter("SQL 文件", "*.sql").PromptForSingleSelection()
 		},
+		PickCertificate: func(title, filterName, pattern string) (string, error) {
+			return native.Dialog.OpenFile().SetTitle(title).AddFilter(filterName, pattern).AddFilter("所有文件", "*.*").
+				CanChooseFiles(true).CanChooseDirectories(false).AttachToWindow(window).PromptForSingleSelection()
+		},
 		PickDatabaseClient: func() (string, error) {
 			return native.Dialog.OpenFile().SetTitle("选择数据库管理客户端").AddFilter("Windows 程序", "*.exe").
 				CanChooseFiles(true).CanChooseDirectories(false).AttachToWindow(window).PromptForSingleSelection()

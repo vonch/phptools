@@ -159,33 +159,47 @@ func retainPublicCertificate(root, certPath, keyPath string, names []string) (bo
 	if err != nil {
 		return false, errors.New("已有公网证书的私钥无法读取。请到证书菜单重新申请，或改回本地证书。")
 	}
-	key, err := parseKey(keyPEM)
-	if err != nil || !publicKeyEqual(cert.PublicKey, key) {
-		return false, errors.New("已有公网证书和私钥不匹配。请到证书菜单重新申请，或改回本地证书。")
+	key, err := parsePrivateKey(keyPEM)
+	if err != nil || !publicKeyMatches(cert, key) {
+		return false, errors.New("已有公网证书和私钥不匹配。请到证书菜单重新添加，或改回本地证书。")
 	}
 	if !coversNames(cert, names) {
-		return false, errors.New("已有公网证书不包含当前域名。请到证书菜单重新申请，或改回本地证书。")
+		return false, errors.New("已有公网证书不包含当前域名。请到证书菜单重新添加，或改回本地证书。")
 	}
 	if time.Until(cert.NotAfter) < 30*24*time.Hour {
-		return false, errors.New("公网证书即将到期。请到证书菜单重新申请。")
+		return false, errors.New("公网证书即将到期。请到证书菜单重新添加或重新申请。")
 	}
 	return true, nil
 }
 
 func coversNames(cert *x509.Certificate, names []string) bool {
-	have := map[string]bool{}
-	for _, name := range cert.DNSNames {
-		have[strings.ToLower(name)] = true
-	}
-	if len(names) == 0 {
+	if cert == nil || len(names) == 0 {
 		return false
 	}
 	for _, name := range names {
-		if !have[name] {
+		if !certificateMatches(cert, name) {
 			return false
 		}
 	}
 	return true
+}
+
+func certificateMatches(cert *x509.Certificate, name string) bool {
+	name = strings.ToLower(name)
+	candidates := cert.DNSNames
+	if len(candidates) == 0 && cert.Subject.CommonName != "" {
+		candidates = []string{cert.Subject.CommonName}
+	}
+	for _, candidate := range candidates {
+		candidate = strings.ToLower(candidate)
+		if candidate == name {
+			return true
+		}
+		if strings.HasPrefix(candidate, "*.") && strings.Count(name, ".") == strings.Count(candidate, ".") && strings.HasSuffix(name, candidate[1:]) {
+			return true
+		}
+	}
+	return false
 }
 
 func NeedsHTTPChallengeServer(site model.Site) bool {
@@ -283,8 +297,8 @@ func InstallPublicCertificate(root, id string, certPEM, keyPEM []byte) error {
 	if err != nil || cert.NotAfter.Before(time.Now()) {
 		return errors.New("公网证书无效")
 	}
-	key, err := parseKey(keyPEM)
-	if err != nil || !publicKeyEqual(cert.PublicKey, key) {
+	key, err := parsePrivateKey(keyPEM)
+	if err != nil || !publicKeyMatches(cert, key) {
 		return errors.New("公网证书和私钥不匹配")
 	}
 	certPath, keyPath := certificatePaths(root, id)

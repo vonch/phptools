@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"phptools/internal/model"
@@ -44,6 +45,54 @@ func (a *App) ApplyPublicCertificate(siteID, email string) (string, error) {
 	})
 }
 
+func (a *App) ImportPublicCertificate(siteID string) (string, error) {
+	if err := a.needRoot(); err != nil {
+		return "", err
+	}
+	site, err := a.certificateSite(siteID)
+	if err != nil {
+		return "", err
+	}
+	a.mu.RLock()
+	root := a.data.Settings.Root
+	a.mu.RUnlock()
+	info := sites.DescribeCertificate(root, site)
+	if len(info.Domains) == 0 {
+		if info.Reason != "" {
+			return "", errors.New(info.Reason)
+		}
+		return "", errors.New("请先填写有效域名")
+	}
+	if a.hooks.PickCertificate == nil {
+		return "", errors.New("证书文件选择器尚未初始化")
+	}
+	certPath, err := a.hooks.PickCertificate("选择证书文件", "证书文件", "*.crt;*.pem;*.cer")
+	if err != nil || certPath == "" {
+		return "", err
+	}
+	certPEM, err := readCertificateFile(certPath)
+	if err != nil {
+		return "", err
+	}
+	keyPath, err := a.hooks.PickCertificate("选择私钥文件", "私钥文件", "*.key;*.pem")
+	if err != nil || keyPath == "" {
+		return "", err
+	}
+	keyPEM, err := readCertificateFile(keyPath)
+	if err != nil {
+		return "", err
+	}
+	certPEM, keyPEM, err = sites.NormalizeImportedCertificate(info.Domains, certPEM, keyPEM, nil)
+	if err != nil {
+		return "", err
+	}
+	return a.task("import-certificate", siteID, func(ctx context.Context, taskID string) error {
+		a.opMu.Lock()
+		defer a.opMu.Unlock()
+		return a.installImportedCertificate(ctx, taskID, siteID, certPEM, keyPEM)
+	})
+}
+
 func (a *App) UseLocalCertificate(siteID string) (string, error) {
 	if err := a.needRoot(); err != nil {
 		return "", err
@@ -56,6 +105,82 @@ func (a *App) UseLocalCertificate(siteID string) (string, error) {
 		defer a.opMu.Unlock()
 		return a.useLocalCertificate(ctx, siteID)
 	})
+}
+
+func (a *App) installImportedCertificate(ctx context.Context, taskID, siteID string, certPEM, keyPEM []byte) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	a.mu.RLock()
+	root := a.data.Settings.Root
+	old := append([]model.Site{}, a.data.Sites...)
+	instances := append([]model.Instance{}, a.data.Instances...)
+	a.mu.RUnlock()
+	var site model.Site
+	found := false
+	for _, item := range old {
+		if item.ID == siteID {
+			site = item
+			found = true
+			break
+		}
+	}
+	if !found {
+		return errors.New("站点不存在")
+	}
+	info := sites.DescribeCertificate(root, site)
+	if len(info.Domains) == 0 {
+		if info.Reason != "" {
+			return errors.New(info.Reason)
+		}
+		return errors.New("请先填写有效域名")
+	}
+	if _, _, err := sites.NormalizeImportedCertificate(info.Domains, certPEM, keyPEM, nil); err != nil {
+		return err
+	}
+	backup, err := sites.BackupCertificate(root, site.ID)
+	if err != nil {
+		return err
+	}
+	restore := func() {
+		_ = sites.RestoreCertificate(root, site.ID, backup)
+	}
+	a.progress(taskID, 0, 0, "正在安装公网证书")
+	if err = sites.InstallPublicCertificate(root, site.ID, certPEM, keyPEM); err != nil {
+		restore()
+		return err
+	}
+	site.HTTPS = true
+	site.UpdatedAt = time.Now().UTC().Format(time.RFC3339Nano)
+	updated := make([]model.Site, 0, len(old))
+	for _, item := range old {
+		if item.ID == site.ID {
+			updated = append(updated, site)
+		} else {
+			updated = append(updated, item)
+		}
+	}
+	if err = a.changeSites(old, updated, instances); err != nil {
+		restore()
+		return err
+	}
+	a.progress(taskID, 1, 1, "公网证书已安装")
+	return nil
+}
+
+func readCertificateFile(path string) ([]byte, error) {
+	if !filepath.IsAbs(path) {
+		return nil, errors.New("请选择证书或私钥文件")
+	}
+	info, err := os.Stat(path)
+	if err != nil || info.IsDir() || info.Size() == 0 || info.Size() > 256*1024 {
+		return nil, errors.New("证书或私钥文件无效")
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, errors.New("无法读取证书或私钥文件")
+	}
+	return data, nil
 }
 
 func (a *App) certificateSite(siteID string) (model.Site, error) {

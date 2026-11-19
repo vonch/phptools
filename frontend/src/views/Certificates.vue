@@ -24,7 +24,7 @@ const kindType = {
 } as const;
 const certificateTask = computed(() =>
   tasks.value.find((task) =>
-    isActiveTask(task) && (task.action === "public-certificate" || task.action === "local-certificate"),
+    isActiveTask(task) && (task.action === "public-certificate" || task.action === "import-certificate" || task.action === "local-certificate"),
   ),
 );
 const columns = computed<DataTableColumns<SiteCertificate>>(() => [
@@ -52,23 +52,30 @@ const columns = computed<DataTableColumns<SiteCertificate>>(() => [
   {
     title: "操作",
     key: "actions",
-    width: 220,
+    width: 320,
     render: (row) => {
       const active = certificateTask.value?.targetId === row.siteId;
+      const locked = !!certificateTask.value || busy.value;
       return h(NSpace, { size: 8, wrap: false }, {
         default: () => [
           h(NButton, {
             size: "small",
             type: "primary",
             secondary: true,
-            disabled: !row.eligible || !!certificateTask.value || busy.value,
+            disabled: !row.eligible || locked,
             loading: active && certificateTask.value?.action === "public-certificate",
             onClick: () => apply(row),
           }, { default: () => (row.kind === "public" ? "重新申请" : "申请") }),
+          h(NButton, {
+            size: "small",
+            disabled: row.domains.length === 0 || locked,
+            loading: active && certificateTask.value?.action === "import-certificate",
+            onClick: () => importCertificate(row),
+          }, { default: () => "添加证书" }),
           row.kind === "public"
             ? h(NButton, {
               size: "small",
-              disabled: !!certificateTask.value || busy.value,
+              disabled: locked,
               loading: active && certificateTask.value?.action === "local-certificate",
               onClick: () => useLocal(row),
             }, { default: () => "改回本地证书" })
@@ -96,6 +103,10 @@ function apply(row: SiteCertificate) {
   if (!row.eligible || certificateTask.value || busy.value) return;
   void run(() => api.ApplyPublicCertificate(row.siteId, email.value.trim()));
 }
+function importCertificate(row: SiteCertificate) {
+  if (row.domains.length === 0 || certificateTask.value || busy.value) return;
+  void run(() => api.ImportPublicCertificate(row.siteId));
+}
 function useLocal(row: SiteCertificate) {
   if (row.kind !== "public" || certificateTask.value || busy.value) return;
   void run(() => api.UseLocalCertificate(row.siteId));
@@ -110,7 +121,7 @@ watch(certificateTask, (task, previous) => {
 <template>
   <NCard title="公网证书" :bordered="false" class="panel">
     <p class="muted">
-      为站点域名申请 Let’s Encrypt 证书。域名需要解析到这台电脑，并且公网可以访问 80 端口。申请成功后，站点会改用这张证书提供 HTTPS。
+      为站点域名申请 Let’s Encrypt 证书。域名需要解析到这台电脑，并且公网可以访问 80 端口。也可以添加已经申请好的证书文件和未加密私钥。证书需要包含站点域名。添加或申请成功后，站点会改用这张证书提供 HTTPS。
     </p>
     <NForm label-placement="left" class="section-gap">
       <NFormItem label="通知邮箱">

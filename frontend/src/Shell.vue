@@ -99,6 +99,7 @@ const actionNames: Record<string, string> = {
   "environment-check": "检测",
   "environment-repair": "修复检测项",
   "public-certificate": "申请公网证书",
+  "import-certificate": "添加公网证书",
   "local-certificate": "改回本地证书",
   "app-update": "应用升级",
 };

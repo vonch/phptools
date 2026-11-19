@@ -119,6 +119,7 @@ interface DesktopAPI {
   DeleteSite(id: string): Promise<void>;
   GetCertificates(): Promise<CertificatePage>;
   ApplyPublicCertificate(siteID: string, email: string): Promise<string>;
+  ImportPublicCertificate(siteID: string): Promise<string>;
   UseLocalCertificate(siteID: string): Promise<string>;
   ReadConfig(instanceID: string): Promise<string>;
   SaveConfig(instanceID: string, content: string): Promise<void>;
