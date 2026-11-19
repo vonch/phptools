@@ -13,7 +13,7 @@ import (
 
 func TestDefaultSidebarPutsOverviewFirst(t *testing.T) {
 	items := defaultSidebar()
-	if len(items) < 3 || items[0].Key != "overview" || items[1].Key != "sites" || items[2].Key != "databases" {
+	if len(items) < 4 || items[0].Key != "overview" || items[1].Key != "sites" || items[2].Key != "certificates" || items[3].Key != "databases" {
 		t.Fatalf("default menu order: %+v", items)
 	}
 }
@@ -29,7 +29,7 @@ func TestSidebarPersistsWithoutEnvironment(t *testing.T) {
 	want[0], want[4] = want[4], want[0]
 	want[1].Hidden = true
 	want[1].Label = "我的组件"
-	want[7].Label = "偏好设置"
+	want[8].Label = "偏好设置"
 	if err = a.SaveSidebar(want); err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestSidebarRejectsInvalidMenus(t *testing.T) {
 		"missing":         func(v []model.SidebarItem) []model.SidebarItem { return v[1:] },
 		"duplicate":       func(v []model.SidebarItem) []model.SidebarItem { v[0] = v[1]; return v },
 		"unknown":         func(v []model.SidebarItem) []model.SidebarItem { v[0].Key = "unknown"; return v },
-		"settings hidden": func(v []model.SidebarItem) []model.SidebarItem { v[7].Hidden = true; return v },
+		"settings hidden": func(v []model.SidebarItem) []model.SidebarItem { v[8].Hidden = true; return v },
 		"label too long": func(v []model.SidebarItem) []model.SidebarItem {
 			v[0].Label = strings.Repeat("界", maxSidebarLabelRunes+1)
 			return v
@@ -165,7 +165,7 @@ func TestSidebarFailedWriteKeepsSavedState(t *testing.T) {
 
 func TestSidebarInvalidFileUsesDefaultsWithDiagnostic(t *testing.T) {
 	invalid := defaultSidebar()
-	invalid[7].Hidden = true
+	invalid[8].Hidden = true
 	raw, _ := json.Marshal(invalid)
 	for _, content := range [][]byte{[]byte("broken JSON"), raw} {
 		dir := t.TempDir()
@@ -219,5 +219,34 @@ func TestSidebarIsIndependentOfEnvironmentSettings(t *testing.T) {
 	}
 	if err = json.Unmarshal(raw, &config); err != nil || config.Root != root {
 		t.Fatal("menu preferences overwrote environment settings")
+	}
+}
+
+func TestSidebarInsertsCertificateMenuIntoOlderPreferences(t *testing.T) {
+	dir := t.TempDir()
+	older := []model.SidebarItem{}
+	for _, item := range defaultSidebar() {
+		if item.Key == "certificates" {
+			continue
+		}
+		older = append(older, item)
+	}
+	older[1].Label = "我的站点"
+	raw, err := json.Marshal(older)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = os.WriteFile(filepath.Join(dir, "sidebar.json"), raw, 0600); err != nil {
+		t.Fatal(err)
+	}
+	a, err := New(dir, Hooks{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(a.data.Diagnostics) != 0 || len(a.data.Sidebar) != len(defaultSidebar()) {
+		t.Fatalf("older menu was not completed: %+v %+v", a.data.Diagnostics, a.data.Sidebar)
+	}
+	if a.data.Sidebar[1].Key != "sites" || a.data.Sidebar[1].Label != "我的站点" || a.data.Sidebar[2].Key != "certificates" {
+		t.Fatalf("certificate menu was not inserted after sites: %+v", a.data.Sidebar)
 	}
 }

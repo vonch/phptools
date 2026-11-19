@@ -84,11 +84,18 @@ func EnsureCertificate(root, id string, domains ...string) error {
 	if len(names) == 0 {
 		return errors.New("请输入有效域名，例如 demo.test")
 	}
+	certPath, keyPath := certificatePaths(root, id)
+	keep, err := retainPublicCertificate(root, certPath, keyPath, names)
+	if err != nil {
+		return err
+	}
+	if keep {
+		return nil
+	}
 	caCert, caKey, err := loadOrCreateCA(root)
 	if err != nil {
 		return err
 	}
-	certPath, keyPath := certificatePaths(root, id)
 	if reusable(certPath, keyPath, caCert, names) {
 		return nil
 	}

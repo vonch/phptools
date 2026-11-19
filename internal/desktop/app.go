@@ -55,7 +55,7 @@ type App struct {
 	activity     sites.ActivityReader
 }
 
-const appVersion = "0.1.55"
+const appVersion = "0.1.56"
 
 func New(configDir string, hooks Hooks) (*App, error) {
 	if configDir == "" {

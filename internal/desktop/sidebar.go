@@ -16,6 +16,7 @@ import (
 func defaultSidebar() []model.SidebarItem {
 	return []model.SidebarItem{
 		{Key: "overview", Label: ""}, {Key: "sites", Label: ""},
+		{Key: "certificates", Label: ""},
 		{Key: "databases", Label: ""}, {Key: "packages", Label: ""},
 		{Key: "instances", Label: ""}, {Key: "health", Label: ""},
 		{Key: "logs", Label: ""}, {Key: "settings", Label: ""},
@@ -65,6 +66,45 @@ func validateSidebar(items []model.SidebarItem) error {
 	return nil
 }
 
+func withDefaultMenus(items []model.SidebarItem) []model.SidebarItem {
+	defaults := defaultSidebar()
+	known := make(map[string]bool, len(defaults))
+	for _, item := range defaults {
+		known[item.Key] = true
+	}
+	present := make(map[string]bool, len(items))
+	result := make([]model.SidebarItem, 0, len(defaults))
+	for _, item := range items {
+		if !known[item.Key] || present[item.Key] {
+			continue
+		}
+		present[item.Key] = true
+		result = append(result, item)
+	}
+	for index, item := range defaults {
+		if present[item.Key] {
+			continue
+		}
+		insertAt := len(result)
+		for _, later := range defaults[index+1:] {
+			for at, existing := range result {
+				if existing.Key == later.Key {
+					insertAt = at
+					break
+				}
+			}
+			if insertAt != len(result) {
+				break
+			}
+		}
+		result = append(result, model.SidebarItem{})
+		copy(result[insertAt+1:], result[insertAt:])
+		result[insertAt] = item
+		present[item.Key] = true
+	}
+	return result
+}
+
 func (a *App) loadSidebar() {
 	a.data.Sidebar = defaultSidebar()
 	raw, err := os.ReadFile(filepath.Join(a.configDir, "sidebar.json"))
@@ -76,7 +116,7 @@ func (a *App) loadSidebar() {
 		err = json.Unmarshal(raw, &items)
 	}
 	if err == nil {
-		items = normalizeSidebar(items)
+		items = withDefaultMenus(normalizeSidebar(items))
 		err = validateSidebar(items)
 	}
 	if err != nil {

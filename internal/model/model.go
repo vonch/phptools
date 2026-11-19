@@ -237,6 +237,22 @@ type MemoryUsage struct {
 	Error           string `json:"error"`
 }
 
+type SiteCertificate struct {
+	SiteID   string   `json:"siteId"`
+	SiteName string   `json:"siteName"`
+	Domains  []string `json:"domains"`
+	Kind     string   `json:"kind"`
+	Issuer   string   `json:"issuer"`
+	NotAfter string   `json:"notAfter"`
+	Eligible bool     `json:"eligible"`
+	Reason   string   `json:"reason"`
+}
+
+type CertificatePage struct {
+	Email string            `json:"email"`
+	Sites []SiteCertificate `json:"sites"`
+}
+
 type Snapshot struct {
 	Settings     Settings            `json:"settings"`
 	Sidebar      []SidebarItem       `json:"sidebar"`

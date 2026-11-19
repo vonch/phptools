@@ -1,7 +1,7 @@
 import { h } from "vue";
 import { NIcon } from "naive-ui";
 import {
-  AppsOutline, CubeOutline, ServerOutline, GlobeOutline,
+  AppsOutline,   CubeOutline, ServerOutline, GlobeOutline, ShieldCheckmarkOutline,
   GridOutline, ListOutline, SettingsOutline, PulseOutline,
 } from "@vicons/ionicons5";
 import type { Page, SidebarItem } from "./types";
@@ -12,6 +12,7 @@ const icon = (component: typeof GridOutline) => () =>
 export const pageCatalog = [
   { key: "overview", label: "概览", icon: icon(GridOutline) },
   { key: "sites", label: "站点", icon: icon(GlobeOutline) },
+  { key: "certificates", label: "证书", icon: icon(ShieldCheckmarkOutline) },
   { key: "databases", label: "数据库", icon: icon(ServerOutline) },
   { key: "packages", label: "组件中心", icon: icon(CubeOutline) },
   { key: "instances", label: "服务实例", icon: icon(AppsOutline) },

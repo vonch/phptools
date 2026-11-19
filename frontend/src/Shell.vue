@@ -48,6 +48,7 @@ import Sites from "./views/Sites.vue";
 import Logs from "./views/Logs.vue";
 import Settings from "./views/Settings.vue";
 import Health from "./views/Health.vue";
+import Certificates from "./views/Certificates.vue";
 import { startAppUpdateChecks, updateAvailable, updateInfo } from "./updateState";
 
 const { busy, run, message } = useAction();
@@ -97,6 +98,8 @@ const actionNames: Record<string, string> = {
   "database-export": "导出数据库",
   "environment-check": "检测",
   "environment-repair": "修复检测项",
+  "public-certificate": "申请公网证书",
+  "local-certificate": "改回本地证书",
   "app-update": "应用升级",
 };
 const seenTasks = new Map<string, string>();
@@ -241,6 +244,7 @@ onUnmounted(() => {
           <Instances v-else-if="state.page === 'instances'" />
           <Databases v-else-if="state.page === 'databases'" />
           <Sites v-else-if="state.page === 'sites'" />
+          <Certificates v-else-if="state.page === 'certificates'" />
           <Health v-else-if="state.page === 'health'" />
           <Logs v-else-if="state.page === 'logs'" />
           <Settings v-else-if="state.page === 'settings'" />

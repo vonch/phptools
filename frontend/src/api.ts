@@ -12,6 +12,7 @@ import type {
   InstanceInput,
   RewritePreset,
   Site,
+  CertificatePage,
   SiteEntrySelection,
   SiteViewPreferences,
   SidebarItem,
@@ -116,6 +117,9 @@ interface DesktopAPI {
   StopAll(): Promise<string>;
   SaveSite(site: Site): Promise<Site>;
   DeleteSite(id: string): Promise<void>;
+  GetCertificates(): Promise<CertificatePage>;
+  ApplyPublicCertificate(siteID: string, email: string): Promise<string>;
+  UseLocalCertificate(siteID: string): Promise<string>;
   ReadConfig(instanceID: string): Promise<string>;
   SaveConfig(instanceID: string, content: string): Promise<void>;
   ReadLog(kind: string, id: string, lines: number): Promise<string>;
@@ -143,6 +147,10 @@ export const api: DesktopAPI = {
   SyncManagedDatabase: async (id) =>
     (await binding.SyncManagedDatabase(id)) as ManagedDatabase,
   DetectDatabaseTools: async () => (await binding.DetectDatabaseTools()) ?? [],
+  GetCertificates: async () => {
+    const page = (await binding.GetCertificates()) as CertificatePage | null;
+    return { email: page?.email ?? "", sites: page?.sites ?? [] };
+  },
   ListDatabaseAccounts: async (instanceID) =>
     (await binding.ListDatabaseAccounts(instanceID)) ?? [],
   DatabaseAccountGrants: async (instanceID, user, host) =>

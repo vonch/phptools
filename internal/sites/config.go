@@ -123,12 +123,16 @@ func Render(root string, site model.Site, php *model.Instance) string {
 	} else {
 		b.WriteString("    location ~ \\.php$ { return 403; }\n")
 	}
+	fmt.Fprintf(&b, "    location ^~ /.well-known/acme-challenge/ {\n        default_type text/plain;\n        alias %s;\n    }\n", acmeAlias(root))
 	b.WriteString("    location ~ /\\. { deny all; }\n}\n")
 	return b.String()
 }
 
 // Apply writes only owned .conf files; rollback restores the previous complete set.
 func Apply(root string, all []model.Site, instances []model.Instance) (func() error, error) {
+	if err := os.MkdirAll(filepath.Join(root, "certs", "acme-web"), 0700); err != nil {
+		return nil, errors.New("无法准备证书验证目录")
+	}
 	dir := filepath.Join(root, "sites")
 	old := map[string][]byte{}
 	entries, err := os.ReadDir(dir)

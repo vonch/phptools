@@ -221,12 +221,27 @@ export interface Snapshot {
   memoryUsage?: MemoryUsage | null;
   updateInfo?: UpdateInfo | null;
 }
+export interface CertificatePage {
+  email: string;
+  sites: SiteCertificate[];
+}
+export interface SiteCertificate {
+  siteId: string;
+  siteName: string;
+  domains: string[];
+  kind: "none" | "local" | "public" | "invalid";
+  issuer: string;
+  notAfter: string;
+  eligible: boolean;
+  reason: string;
+}
 export type Page =
   | "overview"
   | "packages"
   | "instances"
   | "databases"
   | "sites"
+  | "certificates"
   | "health"
   | "logs"
   | "settings";
