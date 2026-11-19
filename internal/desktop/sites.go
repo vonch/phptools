@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"path/filepath"
@@ -64,12 +65,29 @@ func (a *App) SaveSite(input model.Site) (model.Site, error) {
 	instances := append([]model.Instance{}, a.data.Instances...)
 	root := a.data.Settings.Root
 	a.mu.RUnlock()
+	creating := strings.TrimSpace(input.ID) == "" && strings.TrimSpace(input.Root) == ""
 	input, err := siteForSave(input, old)
 	if err != nil {
 		return input, err
 	}
+	var createdDir string
+	discardCreated := func() {
+		if createdDir != "" {
+			_ = os.RemoveAll(createdDir)
+		}
+	}
+	if creating {
+		dir, err := sites.CreateNewProject(root, input.Name, input.Domain)
+		if err != nil {
+			return input, err
+		}
+		createdDir = dir
+		input.Root = dir
+		input.Entry = ""
+	}
 	input, err = sites.Validate(input, old, instances)
 	if err != nil {
+		discardCreated()
 		return input, err
 	}
 	if input.PHPInstanceID != "" {
@@ -77,9 +95,11 @@ func (a *App) SaveSite(input model.Site) (model.Site, error) {
 			if v.ID == input.PHPInstanceID {
 				p, err := a.packageByID(v.PackageID)
 				if err != nil {
+					discardCreated()
 					return input, err
 				}
 				if err = services.ValidatePHPPath(p, filepath.Join(input.Root, input.Entry)); err != nil {
+					discardCreated()
 					return input, err
 				}
 			}
@@ -94,6 +114,7 @@ func (a *App) SaveSite(input model.Site) (model.Site, error) {
 	if input.HTTPS {
 		backup, err := sites.BackupCertificate(root, input.ID)
 		if err != nil {
+			discardCreated()
 			return input, err
 		}
 		restore := func() {
@@ -101,20 +122,24 @@ func (a *App) SaveSite(input model.Site) (model.Site, error) {
 		}
 		if err = sites.EnsureCertificate(root, input.ID, input.Domain); err != nil {
 			restore()
+			discardCreated()
 			return input, err
 		}
 		if err = sites.TrustCA(root); err != nil {
 			restore()
+			discardCreated()
 			return input, err
 		}
 		if err = a.changeSites(old, updated, instances); err != nil {
 			restore()
+			discardCreated()
 			return input, err
 		}
 		a.notify()
 		return input, nil
 	}
 	if err := a.changeSites(old, updated, instances); err != nil {
+		discardCreated()
 		return input, err
 	}
 	a.notify()

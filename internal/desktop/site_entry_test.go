@@ -3,7 +3,10 @@ package desktop
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"phptools/internal/model"
 )
 
 func TestSiteProjectPickerStartsInSites(t *testing.T) {
@@ -24,6 +27,29 @@ func TestSiteProjectPickerStartsInSites(t *testing.T) {
 	info, err := os.Stat(want)
 	if err != nil || !info.IsDir() {
 		t.Fatal(err)
+	}
+}
+
+func TestFailedNewProjectDoesNotLeaveFolder(t *testing.T) {
+	a := testApp(t)
+	_, err := a.SaveSite(model.Site{Name: "演示", Domain: "demo.test", Port: 80, Enabled: true})
+	if err == nil || !strings.Contains(err.Error(), "Nginx") {
+		t.Fatal(err)
+	}
+	pages, err := filepath.Glob(filepath.Join(a.data.Settings.Root, "sites", "*", "index.html"))
+	if err != nil || len(pages) != 0 {
+		t.Fatalf("new project folder remained: %v %v", pages, err)
+	}
+	project := t.TempDir()
+	if err = os.WriteFile(filepath.Join(project, "keep.txt"), []byte("keep"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	_, err = a.SaveSite(model.Site{Name: "已有", Domain: "kept.test", Root: project, Port: 80, Enabled: true})
+	if err == nil {
+		t.Fatal("existing project should still require nginx")
+	}
+	if _, err = os.Stat(filepath.Join(project, "index.html")); !os.IsNotExist(err) {
+		t.Fatal("existing project received a generated homepage")
 	}
 }
 

@@ -144,6 +144,7 @@ const emptySite = (): Site => ({
   lastActiveAt: "",
 });
 const input = ref<Site>(emptySite());
+const newProject = ref(true);
 const domainTouched = ref(false);
 const createDatabase = ref(false);
 const databaseTouched = ref(false);
@@ -244,6 +245,7 @@ function setCreateDatabase(value: boolean) {
 }
 function open(site?: Site) {
   input.value = site ? { ...site } : emptySite();
+  newProject.value = !site;
   domainTouched.value = !!site;
   createDatabase.value = false;
   databaseTouched.value = false;
@@ -280,15 +282,20 @@ function resetEntry() {
 }
 async function save() {
   const creatingDatabase = createDatabase.value;
+  const creatingNew = !input.value.id && newProject.value;
   const notice = await run(async () => {
     const saved = await api.SaveSite({
       ...input.value,
+      root: creatingNew ? "" : input.value.root,
+      entry: creatingNew ? "" : input.value.entry,
       phpInstanceId: mode.value === "php" ? input.value.phpInstanceId : "",
       phpPathInfo: mode.value === "php" && !!input.value.phpPathInfo,
     });
     input.value = { ...input.value, ...saved };
     if (!creatingDatabase) {
       show.value = false;
+      if (creatingNew && saved.https) return "站点已创建，静态首页和 HTTPS 证书已生成";
+      if (creatingNew) return "站点已创建，静态首页已生成";
       return saved.https ? "站点已保存，HTTPS 证书已生成" : "站点配置已保存";
     }
     const created = await api.CreateManagedDatabase(
@@ -298,9 +305,10 @@ async function save() {
     );
     if (created.state === "error") throw new Error(created.error || "数据库创建失败");
     show.value = false;
+    const lead = creatingNew ? "站点已创建，静态首页已生成。" : "站点已保存。";
     return created.state === "pending"
-      ? "站点已保存。数据库已记录，MySQL 启动后到数据库页同步。"
-      : "站点已保存，数据库已创建";
+      ? `${lead}数据库已记录，MySQL 启动后到数据库页同步。`
+      : `${lead}数据库已创建`;
   });
   if (notice) notify.success(notice);
 }
@@ -590,6 +598,14 @@ const columns = computed(() =>
             />
           </NFormItem>
         </div>
+        <div v-if="!input.id" class="site-switch-row">
+          <div>
+            <span class="site-switch-label">新项目</span>
+            <p class="muted">在当前环境的 sites 目录下创建文件夹，并生成一个表示创建成功的静态首页。</p>
+          </div>
+          <NSwitch v-model:value="newProject" />
+        </div>
+        <template v-if="input.id || !newProject">
         <NFormItem label="项目目录" required>
           <div class="input-action">
             <NInput
@@ -616,6 +632,7 @@ const columns = computed(() =>
             <p class="muted">点号表示项目根目录，其他路径相对于项目目录。</p>
           </div>
         </NFormItem>
+        </template>
         <div class="site-switch-row">
           <span class="site-switch-label">启用站点</span>
           <NSwitch v-model:value="input.enabled" />
@@ -743,7 +760,7 @@ const columns = computed(() =>
           :disabled="
             !input.name.trim() ||
             !input.domain.trim() ||
-            !input.root.trim() ||
+            ((!!input.id || !newProject) && !input.root.trim()) ||
             !input.port ||
             (mode === 'php' && !input.phpInstanceId) ||
             (createDatabase && (
