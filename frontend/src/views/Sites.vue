@@ -131,6 +131,7 @@ const emptySite = (): Site => ({
   id: "",
   name: "",
   domain: "",
+  secondDomain: "",
   root: "",
   entry: "",
   port: 80,
@@ -222,7 +223,7 @@ const hasNginx = computed(() =>
 );
 const filtered = computed(() =>
   orderedSites(sites.value, preferences.value).filter((site) =>
-    `${site.name} ${site.domain} ${site.root}`
+    `${site.name} ${site.domain} ${site.secondDomain ?? ""} ${site.root}`
       .toLowerCase()
       .includes(search.value.trim().toLowerCase()),
   ),
@@ -235,6 +236,9 @@ function updateName(value: string) {
 function updateDomain(value: string) {
   input.value.domain = value;
   domainTouched.value = value !== domainFromName(input.value.name);
+}
+function updateSecondDomain(value: string) {
+  input.value.secondDomain = value;
 }
 function setCreateDatabase(value: boolean) {
   createDatabase.value = value;
@@ -331,10 +335,13 @@ const instanceNames = computed(() => {
   for (const instance of instances.value) names.set(instance.id, instance.name);
   return names;
 });
-function siteAddress(site: Site) {
-  if (site.https && (site.port === 80 || site.port === 443)) return `https://${site.domain}`;
-  if (site.https) return `https://${site.domain}（HTTP ${site.port}）`;
-  return site.domain + (site.port === 80 ? "" : `:${site.port}`);
+function siteAddresses(site: Site) {
+  const format = (domain: string) => {
+    if (site.https && (site.port === 80 || site.port === 443)) return `https://${domain}`;
+    if (site.https) return `https://${domain}（HTTP ${site.port}）`;
+    return domain + (site.port === 80 ? "" : `:${site.port}`);
+  };
+  return [site.domain, site.secondDomain ?? ""].map((domain) => domain.trim()).filter(Boolean).map(format);
 }
 function formatSiteDate(value: string) {
   const time = Date.parse(value);
@@ -347,10 +354,10 @@ const allColumns = computed<DataTableBaseColumn<Site>[]>(() => [
   {
     ...sortableColumn("name", "站点 / 域名"),
     render: (site) => {
-      const address = siteAddress(site);
+      const addresses = siteAddresses(site);
       return h("div", { class: "site-identity" }, [
         h("strong", { class: "site-name-label", title: site.name }, site.name),
-        h("span", { class: "site-domain muted mono", title: address }, address),
+        ...addresses.map((address) => h("span", { class: "site-domain muted mono", title: address }, address)),
       ]);
     },
   },
@@ -584,11 +591,18 @@ const columns = computed(() =>
           </NFormItem>
         </div>
         <div class="form-grid domain-grid">
-          <NFormItem label="本地域名" required>
+          <NFormItem label="第一域名" required>
             <NInput
               :value="input.domain"
               placeholder="例如：project.test"
               @update:value="updateDomain"
+            />
+          </NFormItem>
+          <NFormItem label="第二域名">
+            <NInput
+              :value="input.secondDomain || ''"
+              placeholder="可选，例如 api.project.test"
+              @update:value="updateSecondDomain"
             />
           </NFormItem>
           <NFormItem label="HTTP 端口" required>
@@ -646,7 +660,7 @@ const columns = computed(() =>
               开启后这个端口改为 HTTPS，并生成本地证书。首次开启时，Windows 会询问是否信任本环境的证书颁发机构。
             </p>
             <p v-else class="muted">
-              开启后为该域名生成证书，并增加 443 端口。原来的 HTTP 端口仍可访问。首次开启时，Windows 会询问是否信任本环境的证书颁发机构。
+              开启后为填写的域名生成证书，并增加 443 端口。原来的 HTTP 端口仍可访问。首次开启时，Windows 会询问是否信任本环境的证书颁发机构。
             </p>
           </div>
           <NSwitch v-model:value="input.https" />
@@ -956,6 +970,14 @@ const columns = computed(() =>
 }
 :deep(.site-domain) {
   font-size: 12px;
+}
+.domain-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 150px;
+}
+@media (max-width: 640px) {
+  .domain-grid {
+    grid-template-columns: 1fr;
+  }
 }
 @media (max-width: 900px) {
   .site-toolbar-controls {

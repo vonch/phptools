@@ -89,6 +89,7 @@ export interface Site {
   id: string;
   name: string;
   domain: string;
+  secondDomain?: string;
   root: string;
   entry: string;
   port: number;

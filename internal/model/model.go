@@ -103,6 +103,7 @@ type Site struct {
 	ID            string `json:"id"`
 	Name          string `json:"name"`
 	Domain        string `json:"domain"`
+	SecondDomain  string `json:"secondDomain,omitempty"`
 	Root          string `json:"root"`
 	Entry         string `json:"entry"`
 	Port          int    `json:"port"`

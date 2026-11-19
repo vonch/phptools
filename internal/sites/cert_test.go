@@ -47,6 +47,36 @@ func TestCertificateMatchesDomainAndIsReused(t *testing.T) {
 	}
 }
 
+func TestCertificateCoversSecondDomain(t *testing.T) {
+	root := t.TempDir()
+	if err := EnsureCertificate(root, "shop", "shop.test", "api.shop.test"); err != nil {
+		t.Fatal(err)
+	}
+	cert := readTestCertificate(t, root, "shop")
+	if len(cert.DNSNames) != 2 || cert.DNSNames[0] != "shop.test" || cert.DNSNames[1] != "api.shop.test" {
+		t.Fatal(cert.DNSNames)
+	}
+	certPath, _ := certificatePaths(root, "shop")
+	before, err := os.ReadFile(certPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = EnsureCertificate(root, "shop", "shop.test", "api.shop.test"); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.ReadFile(certPath)
+	if err != nil || string(after) != string(before) {
+		t.Fatal("same names replaced the certificate")
+	}
+	if err = EnsureCertificate(root, "shop", "shop.test"); err != nil {
+		t.Fatal(err)
+	}
+	renewed := readTestCertificate(t, root, "shop")
+	if len(renewed.DNSNames) != 1 || renewed.DNSNames[0] != "shop.test" {
+		t.Fatal(renewed.DNSNames)
+	}
+}
+
 func TestLocalhostCertificateIncludesLoopback(t *testing.T) {
 	root := t.TempDir()
 	if err := EnsureCertificate(root, "local", "localhost"); err != nil {

@@ -110,6 +110,56 @@ func TestLocalhostSiteUsesSystemResolution(t *testing.T) {
 	}
 }
 
+func TestSecondDomainIsOptionalAndShared(t *testing.T) {
+	root := t.TempDir()
+	site := model.Site{ID: "shop", Name: "商店", Domain: " Shop.Test ", SecondDomain: " API.Shop.Test ", Root: root, Port: 80, Enabled: true}
+	validated, err := Validate(site, nil, nil)
+	if err != nil || validated.Domain != "shop.test" || validated.SecondDomain != "api.shop.test" {
+		t.Fatalf("%+v %v", validated, err)
+	}
+	rendered := Render(root, validated, nil)
+	if !strings.Contains(rendered, "server_name shop.test api.shop.test;") {
+		t.Fatal(rendered)
+	}
+	site.SecondDomain = ""
+	validated, err = Validate(site, nil, nil)
+	if err != nil || validated.SecondDomain != "" || !strings.Contains(Render(root, validated, nil), "server_name shop.test;") {
+		t.Fatalf("%+v %v", validated, err)
+	}
+	site.SecondDomain = "shop.test"
+	if _, err = Validate(site, nil, nil); err == nil {
+		t.Fatal("accepted the same domain twice")
+	}
+	site.SecondDomain = "bad domain"
+	if _, err = Validate(site, nil, nil); err == nil {
+		t.Fatal("accepted an invalid second domain")
+	}
+	site.SecondDomain = "api.shop.test"
+	other := model.Site{ID: "other", Domain: "other.test", SecondDomain: "api.shop.test", Root: root, Port: 80, Enabled: true}
+	if _, err = Validate(site, []model.Site{other}, nil); err == nil {
+		t.Fatal("accepted a second domain already used on the same port")
+	}
+	other.Port = 8080
+	if _, err = Validate(site, []model.Site{other}, nil); err != nil {
+		t.Fatal(err)
+	}
+	other.Port = 443
+	other.Enabled = true
+	site.HTTPS = true
+	if _, err = Validate(site, []model.Site{other}, nil); err == nil {
+		t.Fatal("accepted two 443 listeners for one domain")
+	}
+	all := []model.Site{
+		{Domain: "shop.test", SecondDomain: "api.shop.test", Enabled: true},
+		{Domain: "localhost", SecondDomain: "local.test", Enabled: true},
+		{Domain: "hidden.test", SecondDomain: "also-hidden.test", Enabled: false},
+	}
+	got := Domains(all)
+	if len(got) != 3 || got[0] != "api.shop.test" || got[1] != "local.test" || got[2] != "shop.test" {
+		t.Fatal(got)
+	}
+}
+
 func TestPHPPathInfoIsExplicitAndPreservesCustomLocations(t *testing.T) {
 	site := model.Site{ID: "path", Domain: "path.test", Root: t.TempDir(), Port: 8081,
 		Rewrite: "location /web/ { try_files $uri $uri/ /web/index.html; }\nlocation / { index index.php index.html; }"}

@@ -21,6 +21,7 @@ func ValidDomain(v string) bool {
 
 func Validate(site model.Site, others []model.Site, instances []model.Instance) (model.Site, error) {
 	site.Domain = strings.ToLower(strings.TrimSpace(site.Domain))
+	site.SecondDomain = strings.ToLower(strings.TrimSpace(site.SecondDomain))
 	site.Name = strings.TrimSpace(site.Name)
 	if !idPattern.MatchString(site.ID) {
 		return site, errors.New("站点 ID 无效")
@@ -30,6 +31,12 @@ func Validate(site model.Site, others []model.Site, instances []model.Instance) 
 	}
 	if !ValidDomain(site.Domain) {
 		return site, errors.New("请输入有效域名，例如 demo.test")
+	}
+	if site.SecondDomain != "" && !ValidDomain(site.SecondDomain) {
+		return site, errors.New("请输入有效的第二域名，例如 shop.test")
+	}
+	if site.SecondDomain != "" && site.SecondDomain == site.Domain {
+		return site, errors.New("第一域名和第二域名不能相同")
 	}
 	if site.Port < 1 || site.Port > 65535 {
 		return site, errors.New("站点端口应在 1–65535 之间")
@@ -53,7 +60,7 @@ func Validate(site model.Site, others []model.Site, instances []model.Instance) 
 		return site, err
 	}
 	for _, v := range others {
-		if v.ID != site.ID && v.Domain == site.Domain && v.Port == site.Port {
+		if v.ID != site.ID && v.Port == site.Port && sharesDomain(site, v) {
 			return site, errors.New("该域名与端口已有站点")
 		}
 	}
@@ -73,7 +80,7 @@ func Validate(site model.Site, others []model.Site, instances []model.Instance) 
 	}
 	if site.Enabled && (site.HTTPS || site.Port == 443) {
 		for _, v := range others {
-			if v.ID != site.ID && v.Enabled && v.Domain == site.Domain && (v.HTTPS || v.Port == 443) {
+			if v.ID != site.ID && v.Enabled && sharesDomain(site, v) && (v.HTTPS || v.Port == 443) {
 				return site, errors.New("这个域名已经有使用 443 端口的站点")
 			}
 		}
@@ -94,7 +101,7 @@ func Render(root string, site model.Site, php *model.Instance) string {
 	} else {
 		fmt.Fprintf(&b, "    listen 127.0.0.1:%d;\n", site.Port)
 	}
-	fmt.Fprintf(&b, "    server_name %s;\n    root %s;\n    index index.php index.html;\n    access_log %s;\n    error_log %s;\n", site.Domain, quote(filepath.Join(site.Root, site.Entry)), quote(filepath.Join(root, "logs", site.ID+"-access.log")), quote(filepath.Join(root, "logs", site.ID+"-error.log")))
+	fmt.Fprintf(&b, "    server_name %s;\n    root %s;\n    index index.php index.html;\n    access_log %s;\n    error_log %s;\n", serverName(site), quote(filepath.Join(site.Root, site.Entry)), quote(filepath.Join(root, "logs", site.ID+"-access.log")), quote(filepath.Join(root, "logs", site.ID+"-error.log")))
 	if strings.TrimSpace(site.Rewrite) != "" {
 		fmt.Fprintf(&b, "    # Custom rules\n%s\n", site.Rewrite)
 	} else if php != nil {
@@ -186,11 +193,48 @@ func Apply(root string, all []model.Site, instances []model.Instance) (func() er
 
 func mustEntries(dir string) []os.DirEntry { entries, _ := os.ReadDir(dir); return entries }
 
+func serverName(site model.Site) string {
+	if site.SecondDomain == "" {
+		return site.Domain
+	}
+	return site.Domain + " " + site.SecondDomain
+}
+
+func sharesDomain(left, right model.Site) bool {
+	for _, domain := range domainSet(left) {
+		for _, other := range domainSet(right) {
+			if domain == other {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func domainSet(site model.Site) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, raw := range []string{site.Domain, site.SecondDomain} {
+		domain := strings.ToLower(strings.TrimSpace(raw))
+		if domain == "" || seen[domain] {
+			continue
+		}
+		seen[domain] = true
+		out = append(out, domain)
+	}
+	return out
+}
+
 func Domains(all []model.Site) []string {
 	set := map[string]bool{}
 	for _, s := range all {
-		if s.Enabled && s.Domain != "localhost" {
-			set[s.Domain] = true
+		if !s.Enabled {
+			continue
+		}
+		for _, domain := range domainSet(s) {
+			if domain != "localhost" {
+				set[domain] = true
+			}
 		}
 	}
 	out := []string{}

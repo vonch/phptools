@@ -121,7 +121,11 @@ func (a *App) SaveSite(input model.Site) (model.Site, error) {
 		restore := func() {
 			_ = sites.RestoreCertificate(root, input.ID, backup)
 		}
-		if err = sites.EnsureCertificate(root, input.ID, input.Domain); err != nil {
+		names := []string{input.Domain}
+		if input.SecondDomain != "" {
+			names = append(names, input.SecondDomain)
+		}
+		if err = sites.EnsureCertificate(root, input.ID, names...); err != nil {
 			restore()
 			discardCreated()
 			return input, err

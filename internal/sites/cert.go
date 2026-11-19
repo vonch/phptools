@@ -12,6 +12,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -75,11 +76,12 @@ func RemoveCertificate(root, id string) error {
 	return nil
 }
 
-func EnsureCertificate(root, id, domain string) error {
+func EnsureCertificate(root, id string, domains ...string) error {
 	if !idPattern.MatchString(id) {
 		return errors.New("站点 ID 无效")
 	}
-	if !ValidDomain(domain) {
+	names := certificateNames(domains)
+	if len(names) == 0 {
 		return errors.New("请输入有效域名，例如 demo.test")
 	}
 	caCert, caKey, err := loadOrCreateCA(root)
@@ -87,7 +89,7 @@ func EnsureCertificate(root, id, domain string) error {
 		return err
 	}
 	certPath, keyPath := certificatePaths(root, id)
-	if reusable(certPath, keyPath, caCert, domain) {
+	if reusable(certPath, keyPath, caCert, names) {
 		return nil
 	}
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -101,15 +103,18 @@ func EnsureCertificate(root, id, domain string) error {
 	now := time.Now()
 	template := &x509.Certificate{
 		SerialNumber: serial,
-		Subject:      pkix.Name{CommonName: domain},
+		Subject:      pkix.Name{CommonName: names[0]},
 		NotBefore:    now.Add(-time.Hour),
 		NotAfter:     now.Add(certificateLifetime),
 		KeyUsage:     x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		DNSNames:     []string{domain},
+		DNSNames:     names,
 	}
-	if domain == "localhost" {
-		template.IPAddresses = []net.IP{net.ParseIP("127.0.0.1")}
+	for _, name := range names {
+		if name == "localhost" {
+			template.IPAddresses = []net.IP{net.ParseIP("127.0.0.1")}
+			break
+		}
 	}
 	der, err := x509.CreateCertificate(rand.Reader, template, caCert, &key.PublicKey, caKey)
 	if err != nil {
@@ -196,7 +201,22 @@ func createCA(certPath, keyPath string) (*x509.Certificate, *ecdsa.PrivateKey, e
 	return cert, key, nil
 }
 
-func reusable(certPath, keyPath string, ca *x509.Certificate, domain string) bool {
+func certificateNames(domains []string) []string {
+	names := make([]string, 0, len(domains))
+	for _, domain := range domains {
+		domain = strings.ToLower(strings.TrimSpace(domain))
+		if domain == "" {
+			continue
+		}
+		if !ValidDomain(domain) {
+			return nil
+		}
+		names = append(names, domain)
+	}
+	return names
+}
+
+func reusable(certPath, keyPath string, ca *x509.Certificate, domains []string) bool {
 	certPEM, err := os.ReadFile(certPath)
 	if err != nil {
 		return false
@@ -213,17 +233,26 @@ func reusable(certPath, keyPath string, ca *x509.Certificate, domain string) boo
 	if err != nil || !publicKeyEqual(cert.PublicKey, key) {
 		return false
 	}
-	if !namesMatch(cert, domain) || time.Until(cert.NotAfter) < 30*24*time.Hour {
+	if !namesMatch(cert, domains) || time.Until(cert.NotAfter) < 30*24*time.Hour {
 		return false
 	}
 	return true
 }
 
-func namesMatch(cert *x509.Certificate, domain string) bool {
-	if len(cert.DNSNames) != 1 || cert.DNSNames[0] != domain {
+func namesMatch(cert *x509.Certificate, domains []string) bool {
+	if len(cert.DNSNames) != len(domains) {
 		return false
 	}
-	if domain == "localhost" {
+	wantsLoopback := false
+	for i, domain := range domains {
+		if cert.DNSNames[i] != domain {
+			return false
+		}
+		if domain == "localhost" {
+			wantsLoopback = true
+		}
+	}
+	if wantsLoopback {
 		return len(cert.IPAddresses) == 1 && cert.IPAddresses[0].Equal(net.ParseIP("127.0.0.1"))
 	}
 	return len(cert.IPAddresses) == 0
