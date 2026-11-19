@@ -144,6 +144,13 @@ func (a *App) OpenDirectory(path string) error {
 	return nil
 }
 
+func siteVisitURL(site model.Site) string {
+	if site.HTTPS {
+		return fmt.Sprintf("https://%s/", site.Domain)
+	}
+	return fmt.Sprintf("http://%s:%d/", site.Domain, site.Port)
+}
+
 func (a *App) VisitSite(id string) error {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
@@ -155,7 +162,7 @@ func (a *App) VisitSite(id string) error {
 			if a.hooks.OpenURL == nil {
 				return errors.New("浏览器未初始化")
 			}
-			return a.hooks.OpenURL(fmt.Sprintf("http://%s:%d/", s.Domain, s.Port))
+			return a.hooks.OpenURL(siteVisitURL(s))
 		}
 	}
 	return errors.New("站点不存在")

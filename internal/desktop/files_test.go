@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"phptools/internal/model"
 )
 
 func TestOpenDirectoryUsesExactNormalizedDirectoryAndReportsFailure(t *testing.T) {
@@ -44,5 +46,17 @@ func TestOpenDirectoryUsesExactNormalizedDirectoryAndReportsFailure(t *testing.T
 	a.hooks.OpenDirectory = nil
 	if err := a.OpenDirectory(dir); err == nil {
 		t.Fatal("missing opener was silently accepted")
+	}
+}
+
+func TestSiteVisitURLUsesHTTPSWhenEnabled(t *testing.T) {
+	if got := siteVisitURL(model.Site{Domain: "shop.test", Port: 80, HTTPS: true}); got != "https://shop.test/" {
+		t.Fatal(got)
+	}
+	if got := siteVisitURL(model.Site{Domain: "shop.test", Port: 443, HTTPS: true}); got != "https://shop.test/" {
+		t.Fatal(got)
+	}
+	if got := siteVisitURL(model.Site{Domain: "shop.test", Port: 8080}); got != "http://shop.test:8080/" {
+		t.Fatal(got)
 	}
 }

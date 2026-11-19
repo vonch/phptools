@@ -31,6 +31,7 @@ import {
 import { api } from "../api";
 import { useAction } from "../composables";
 import { databaseNameFromSite, domainFromName, folderFromName } from "../siteDefaults";
+import { httpsFormStatus } from "../siteHttps";
 import { defaultSiteView, nextSiteSort, orderedSites } from "../siteTable";
 import { errorText, instances, navigate, sites, snapshot } from "../state";
 import type { RewritePreset, Site, SiteSortableKey, SiteViewPreferences } from "../types";
@@ -147,6 +148,8 @@ const emptySite = (): Site => ({
 const input = ref<Site>(emptySite());
 const newProject = ref(true);
 const domainTouched = ref(false);
+const openedHttps = ref(false);
+const httpsStatus = computed(() => httpsFormStatus(input.value, openedHttps.value));
 const createDatabase = ref(false);
 const databaseTouched = ref(false);
 const databaseName = ref("");
@@ -251,6 +254,7 @@ function open(site?: Site) {
   input.value = site ? { ...site } : emptySite();
   newProject.value = !site;
   domainTouched.value = !!site;
+  openedHttps.value = !!site?.https;
   createDatabase.value = false;
   databaseTouched.value = false;
   databaseName.value = "";
@@ -605,7 +609,7 @@ const columns = computed(() =>
               @update:value="updateSecondDomain"
             />
           </NFormItem>
-          <NFormItem label="HTTP 端口" required>
+          <NFormItem :label="input.https && input.port === 443 ? 'HTTPS 端口' : 'HTTP 端口'" required>
             <NInputNumber
               v-model:value="input.port"
               :min="1"
@@ -656,12 +660,8 @@ const columns = computed(() =>
         <div class="site-switch-row">
           <div>
             <span class="site-switch-label">HTTPS</span>
-            <p v-if="input.port === 443" class="muted">
-              开启后这个端口改为 HTTPS，并生成本地证书。首次开启时，Windows 会询问是否信任本环境的证书颁发机构。
-            </p>
-            <p v-else class="muted">
-              开启后为填写的域名生成证书，并增加 443 端口。原来的 HTTP 端口仍可访问。首次开启时，Windows 会询问是否信任本环境的证书颁发机构。
-            </p>
+            <p class="muted">{{ httpsStatus.text }}</p>
+            <p v-for="address in httpsStatus.addresses" :key="address" class="muted mono">{{ address }}</p>
           </div>
           <NSwitch v-model:value="input.https" />
         </div>
