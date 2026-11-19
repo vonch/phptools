@@ -98,6 +98,42 @@ func TestCheckForUpdateCachesFailuresAndNeverTreatsThemAsLatest(t *testing.T) {
 	}
 }
 
+func TestInstallUpdateRefreshesReplacedPackageBeforeDownload(t *testing.T) {
+	a, err := New(t.TempDir(), Hooks{Exit: func() {}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var downloads atomic.Int32
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" && r.URL.Path != "/update.json" {
+			downloads.Add(1)
+			http.Error(w, "unexpected download", http.StatusInternalServerError)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(updateManifest{
+			Version: "9.9.9", DownloadURL: "https://updates.example/PHPTools.exe",
+			SHA256: strings.Repeat("ab", 32), Size: 19012608, Notes: "新版本",
+		})
+	}))
+	t.Cleanup(server.Close)
+	a.updateClient = server.Client()
+	a.data.Settings.UpdateManifestURL = server.URL
+	a.data.UpdateInfo = &model.UpdateInfo{
+		CurrentVersion: appVersion, LatestVersion: "0.1.47", Available: true, Configured: true,
+		DownloadURL: "https://updates.example/PHPTools.exe", SHA256: strings.Repeat("cd", 32), Size: 19001344,
+	}
+	if _, err = a.InstallUpdate(); err == nil || !strings.Contains(err.Error(), "官网安装包已更新") {
+		t.Fatal(err)
+	}
+	if downloads.Load() != 0 {
+		t.Fatal("replaced package was downloaded before confirmation")
+	}
+	info := a.GetUpdateInfo()
+	if info.LatestVersion != "9.9.9" || info.Size != 19012608 || info.SHA256 != strings.Repeat("ab", 32) || !info.Available {
+		t.Fatalf("%+v", info)
+	}
+}
+
 func TestBuiltinUpdateSourceIgnoresSavedAddresses(t *testing.T) {
 	for _, raw := range []string{
 		"",

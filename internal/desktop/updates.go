@@ -63,8 +63,10 @@ func (a *App) CheckForUpdate() (model.UpdateInfo, error) {
 	return info, err
 }
 
-// InstallUpdate installs the exact version that was checked and shown to the
-// user. It never silently re-fetches a different manifest during confirmation.
+// InstallUpdate installs the version currently published at the update
+// manifest. A previously checked package is not downloaded after the official
+// file has been replaced, because that file's size and hash would no longer
+// match.
 func (a *App) InstallUpdate() (string, error) {
 	if runtime.GOOS != "windows" {
 		return "", errors.New("应用升级目前仅支持 Windows")
@@ -78,11 +80,46 @@ func (a *App) InstallUpdate() (string, error) {
 	if !info.Configured || !info.Available || info.Error != "" {
 		return "", errors.New("请先成功检查到可用的新版本，再点击升级")
 	}
+	fresh, err := a.confirmPublishedUpdate(info)
+	if err != nil {
+		return "", err
+	}
 	executable, err := os.Executable()
 	if err != nil {
 		return "", err
 	}
-	return a.installUpdateAt(info, executable)
+	return a.installUpdateAt(fresh, executable)
+}
+
+func (a *App) confirmPublishedUpdate(info model.UpdateInfo) (model.UpdateInfo, error) {
+	a.mu.RLock()
+	manifestURL, current := a.data.Settings.UpdateManifestURL, a.data.Settings.Version
+	a.mu.RUnlock()
+	if strings.TrimSpace(manifestURL) == "" {
+		manifestURL = defaultUpdateManifestURL
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	fresh, err := fetchUpdate(ctx, a.updateTransport(20*time.Second), manifestURL, current)
+	if err != nil {
+		return info, redactUpdateAddress(err)
+	}
+	if !fresh.Available {
+		a.rememberUpdate(fresh)
+		return fresh, errors.New("当前版本已是最新，无需升级")
+	}
+	if fresh.LatestVersion != info.LatestVersion || fresh.SHA256 != info.SHA256 || fresh.Size != info.Size || fresh.DownloadURL != info.DownloadURL {
+		a.rememberUpdate(fresh)
+		return fresh, errors.New("官网安装包已更新，请确认新版本后再升级")
+	}
+	return fresh, nil
+}
+
+func (a *App) rememberUpdate(info model.UpdateInfo) {
+	a.mu.Lock()
+	a.data.UpdateInfo = &info
+	a.mu.Unlock()
+	a.notify()
 }
 
 func (a *App) installUpdateAt(info model.UpdateInfo, executable string) (string, error) {
