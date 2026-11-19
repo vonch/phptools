@@ -77,13 +77,14 @@ func (a *App) SaveSite(input model.Site) (model.Site, error) {
 		}
 	}
 	if creating {
-		dir, err := sites.CreateNewProject(root, input.Name, input.Domain)
+		dir, err := sites.CreateNewProject(root, input.Name, input.Domain, input.ProjectFolder)
 		if err != nil {
 			return input, err
 		}
 		createdDir = dir
 		input.Root = dir
 		input.Entry = ""
+		input.ProjectFolder = ""
 	}
 	input, err = sites.Validate(input, old, instances)
 	if err != nil {

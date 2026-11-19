@@ -30,7 +30,7 @@ import {
 } from "@vicons/ionicons5";
 import { api } from "../api";
 import { useAction } from "../composables";
-import { databaseNameFromSite, domainFromName } from "../siteDefaults";
+import { databaseNameFromSite, domainFromName, folderFromName } from "../siteDefaults";
 import { defaultSiteView, nextSiteSort, orderedSites } from "../siteTable";
 import { errorText, instances, navigate, sites, snapshot } from "../state";
 import type { RewritePreset, Site, SiteSortableKey, SiteViewPreferences } from "../types";
@@ -288,6 +288,7 @@ async function save() {
       ...input.value,
       root: creatingNew ? "" : input.value.root,
       entry: creatingNew ? "" : input.value.entry,
+      projectFolder: creatingNew ? folderFromName(input.value.name) : "",
       phpInstanceId: mode.value === "php" ? input.value.phpInstanceId : "",
       phpPathInfo: mode.value === "php" && !!input.value.phpPathInfo,
     });
@@ -602,7 +603,7 @@ const columns = computed(() =>
         <div v-if="!input.id" class="site-switch-row">
           <div>
             <span class="site-switch-label">新项目</span>
-            <p class="muted">在当前环境的 sites 目录下创建文件夹，并生成一个表示创建成功的静态首页。</p>
+            <p class="muted">在当前环境的 sites 目录下创建小写英文文件夹，不含空格和特殊符号，并生成一个表示创建成功的静态首页。</p>
           </div>
           <NSwitch v-model:value="newProject" />
         </div>

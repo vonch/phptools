@@ -9,18 +9,18 @@ import (
 
 func TestNewProjectCreatesHomepageUnderSites(t *testing.T) {
 	env := t.TempDir()
-	taken := filepath.Join(env, "sites", "演示")
+	taken := filepath.Join(env, "sites", "yanshi")
 	if err := os.MkdirAll(taken, 0700); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(taken, "keep.txt"), []byte("keep"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	dir, err := CreateNewProject(env, "演示", "demo.test")
+	dir, err := CreateNewProject(env, "演示", "demo.test", "yanshi")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if dir != filepath.Join(env, "sites", "演示-2") {
+	if dir != filepath.Join(env, "sites", "yanshi2") {
 		t.Fatal(dir)
 	}
 	if data, err := os.ReadFile(filepath.Join(taken, "keep.txt")); err != nil || string(data) != "keep" {
@@ -33,7 +33,7 @@ func TestNewProjectCreatesHomepageUnderSites(t *testing.T) {
 	if !strings.Contains(string(page), "<h1>创建成功</h1>") || !strings.Contains(string(page), "站点「演示」已创建") {
 		t.Fatal(string(page))
 	}
-	unsafe, err := CreateNewProject(env, `<script>alert("x")</script>`, "safe.test")
+	unsafe, err := CreateNewProject(env, `<script>alert("x")</script>`, "safe.test", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestNewProjectCreatesHomepageUnderSites(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	escaped, err := CreateNewProject(env, filepath.Join("..", filepath.Base(parent)), "escape.test")
+	escaped, err := CreateNewProject(env, filepath.Join("..", filepath.Base(parent)), "escape.test", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,23 +56,29 @@ func TestNewProjectCreatesHomepageUnderSites(t *testing.T) {
 	if err != nil || strings.HasPrefix(rel, "..") {
 		t.Fatal(escaped)
 	}
-	reserved, err := CreateNewProject(env, "CON", "aux.test")
-	if err != nil || !strings.HasSuffix(reserved, "CON-site") {
+	reserved, err := CreateNewProject(env, "CON", "aux.test", "")
+	if err != nil || !strings.HasSuffix(reserved, "consite") {
 		t.Fatalf("%s %v", reserved, err)
 	}
 }
 
-func TestProjectFolderNameKeepsReadableCharacters(t *testing.T) {
-	if got := projectFolderName("  我的项目  ", "ignored.test"); got != "我的项目" {
+func TestProjectFolderNameUsesLowercaseEnglish(t *testing.T) {
+	if got := projectFolderName("演示", "other.test", "  Yan Shi! "); got != "yanshi" {
 		t.Fatal(got)
 	}
-	if got := projectFolderName("a/b:c", "ignored.test"); got != "a-b-c" {
+	if got := projectFolderName("My Site", "ignored.test", ""); got != "mysite" {
 		t.Fatal(got)
 	}
-	if got := projectFolderName(" .. ", "shop.test"); got != "shop" {
+	if got := projectFolderName("a/b:c", "ignored.test", ""); got != "abc" {
 		t.Fatal(got)
 	}
-	if got := projectFolderName("", ""); got != "site" {
+	if got := projectFolderName(" .. ", "shop.test", ""); got != "shop" {
+		t.Fatal(got)
+	}
+	if got := projectFolderName("", "", ""); got != "site" {
+		t.Fatal(got)
+	}
+	if got := projectFolderName("CON", "aux.test", "CON"); got != "consite" {
 		t.Fatal(got)
 	}
 }

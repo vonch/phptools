@@ -114,6 +114,7 @@ type Site struct {
 	CreatedAt     string `json:"createdAt"`
 	UpdatedAt     string `json:"updatedAt"`
 	LastActiveAt  string `json:"lastActiveAt"`
+	ProjectFolder string `json:"projectFolder,omitempty"`
 }
 
 type SiteEntrySelection struct {

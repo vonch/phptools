@@ -100,6 +100,7 @@ export interface Site {
   createdAt: string;
   lastActiveAt: string;
   updatedAt: string;
+  projectFolder?: string;
 }
 export type SiteSortableKey = "name" | "createdAt" | "lastActiveAt";
 export type SiteSortKey = SiteSortableKey | "manual" | "domain" | "root" | "environment" | "enabled";

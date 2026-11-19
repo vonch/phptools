@@ -18,6 +18,16 @@ export function domainFromName(name: string): string {
   return label ? `${label}.test` : "";
 }
 
+export function folderFromName(name: string): string {
+  const converted = pinyin(name.trim(), {
+    toneType: "none",
+    nonZh: "consecutive",
+    v: true,
+    separator: "",
+  });
+  return converted.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 60);
+}
+
 export function databaseNameFromSite(name: string): string {
   const converted = pinyin(name.trim(), {
     toneType: "none",

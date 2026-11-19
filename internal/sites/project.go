@@ -9,17 +9,17 @@ import (
 	"strings"
 )
 
-func CreateNewProject(envRoot, name, domain string) (string, error) {
+func CreateNewProject(envRoot, name, domain, folder string) (string, error) {
 	parent := filepath.Join(envRoot, "sites")
 	if err := os.MkdirAll(parent, 0700); err != nil {
 		return "", errors.New("无法在 sites 目录创建项目文件夹")
 	}
-	base := projectFolderName(name, domain)
+	base := projectFolderName(name, domain, folder)
 	var dir string
 	for n := 1; n < 1000; n++ {
 		folder := base
 		if n > 1 {
-			folder = fmt.Sprintf("%s-%d", base, n)
+			folder = fmt.Sprintf("%s%d", base, n)
 		}
 		candidate := filepath.Join(parent, folder)
 		rel, err := filepath.Rel(parent, candidate)
@@ -59,41 +59,38 @@ func CreateNewProject(envRoot, name, domain string) (string, error) {
 	return dir, nil
 }
 
-func projectFolderName(name, domain string) string {
-	cleaned := sanitizeProjectFolder(name)
+func projectFolderName(name, domain, folder string) string {
+	cleaned := folderSlug(folder)
+	if cleaned == "" {
+		cleaned = folderSlug(name)
+	}
 	if cleaned == "" {
 		label, _, _ := strings.Cut(strings.TrimSpace(domain), ".")
-		cleaned = sanitizeProjectFolder(label)
+		cleaned = folderSlug(label)
 	}
 	if cleaned == "" {
 		cleaned = "site"
 	}
 	if windowsReservedName(cleaned) {
-		cleaned += "-site"
+		cleaned += "site"
 	}
 	return cleaned
 }
 
-func sanitizeProjectFolder(value string) string {
+func folderSlug(value string) string {
 	var b strings.Builder
-	previousDash := false
 	for _, r := range strings.TrimSpace(value) {
-		if r < 32 || strings.ContainsRune(`<>:"/\|?*`, r) {
-			if b.Len() > 0 && !previousDash {
-				b.WriteByte('-')
-				previousDash = true
-			}
-			continue
+		switch {
+		case r >= 'A' && r <= 'Z':
+			b.WriteByte(byte(r - 'A' + 'a'))
+		case (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9'):
+			b.WriteRune(r)
 		}
-		b.WriteRune(r)
-		previousDash = false
 	}
-	cleaned := strings.Trim(b.String(), " .-")
-	runes := []rune(cleaned)
-	if len(runes) > 60 {
-		cleaned = strings.TrimRight(string(runes[:60]), " .-")
+	if b.Len() > 60 {
+		return b.String()[:60]
 	}
-	return cleaned
+	return b.String()
 }
 
 func windowsReservedName(name string) bool {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { databaseNameFromSite, domainFromName } from "../src/siteDefaults.ts";
+import { databaseNameFromSite, domainFromName, folderFromName } from "../src/siteDefaults.ts";
 
 test("a site name fills the local domain and database name", () => {
   assert.equal(domainFromName("ttttt"), "ttttt.test");
@@ -13,4 +13,10 @@ test("a site name fills the local domain and database name", () => {
   assert.equal(databaseNameFromSite("My Site"), "MySite");
   assert.equal(databaseNameFromSite("我的"), "wode");
   assert.equal(databaseNameFromSite("a".repeat(40)).length, 32);
+  assert.equal(folderFromName("  我的项目  "), "wodexiangmu");
+  assert.equal(folderFromName("My Site"), "mysite");
+  assert.equal(folderFromName("a/b:c"), "abc");
+  assert.equal(folderFromName("重庆"), "chongqing");
+  assert.equal(folderFromName("绿"), "lv");
+  assert.equal(folderFromName("，。"), "");
 });
