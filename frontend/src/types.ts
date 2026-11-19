@@ -92,6 +92,7 @@ export interface Site {
   root: string;
   entry: string;
   port: number;
+  https: boolean;
   phpInstanceId: string;
   phpPathInfo?: boolean;
   enabled: boolean;

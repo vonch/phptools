@@ -62,6 +62,7 @@ func (a *App) SaveSite(input model.Site) (model.Site, error) {
 	a.mu.RLock()
 	old := append([]model.Site{}, a.data.Sites...)
 	instances := append([]model.Instance{}, a.data.Instances...)
+	root := a.data.Settings.Root
 	a.mu.RUnlock()
 	input, err := siteForSave(input, old)
 	if err != nil {
@@ -89,6 +90,29 @@ func (a *App) SaveSite(input model.Site) (model.Site, error) {
 		if v.ID != input.ID {
 			updated = append(updated, v)
 		}
+	}
+	if input.HTTPS {
+		backup, err := sites.BackupCertificate(root, input.ID)
+		if err != nil {
+			return input, err
+		}
+		restore := func() {
+			_ = sites.RestoreCertificate(root, input.ID, backup)
+		}
+		if err = sites.EnsureCertificate(root, input.ID, input.Domain); err != nil {
+			restore()
+			return input, err
+		}
+		if err = sites.TrustCA(root); err != nil {
+			restore()
+			return input, err
+		}
+		if err = a.changeSites(old, updated, instances); err != nil {
+			restore()
+			return input, err
+		}
+		a.notify()
+		return input, nil
 	}
 	if err := a.changeSites(old, updated, instances); err != nil {
 		return input, err
@@ -138,7 +162,11 @@ func (a *App) DeleteSite(id string) error {
 	if !found {
 		return errors.New("站点不存在")
 	}
-	return a.changeSites(old, updated, instances)
+	if err := a.changeSites(old, updated, instances); err != nil {
+		return err
+	}
+	_ = sites.RemoveCertificate(a.data.Settings.Root, id)
+	return nil
 }
 
 func (a *App) changeSites(old, updated []model.Site, instances []model.Instance) error {

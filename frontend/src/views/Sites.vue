@@ -134,6 +134,7 @@ const emptySite = (): Site => ({
   root: "",
   entry: "",
   port: 80,
+  https: false,
   phpInstanceId: "",
   phpPathInfo: false,
   enabled: true,
@@ -288,7 +289,7 @@ async function save() {
     input.value = { ...input.value, ...saved };
     if (!creatingDatabase) {
       show.value = false;
-      return "站点配置已保存";
+      return saved.https ? "站点已保存，HTTPS 证书已生成" : "站点配置已保存";
     }
     const created = await api.CreateManagedDatabase(
       mysqlInstanceId.value,
@@ -322,6 +323,8 @@ const instanceNames = computed(() => {
   return names;
 });
 function siteAddress(site: Site) {
+  if (site.https && (site.port === 80 || site.port === 443)) return `https://${site.domain}`;
+  if (site.https) return `https://${site.domain}（HTTP ${site.port}）`;
   return site.domain + (site.port === 80 ? "" : `:${site.port}`);
 }
 function formatSiteDate(value: string) {
@@ -616,6 +619,18 @@ const columns = computed(() =>
         <div class="site-switch-row">
           <span class="site-switch-label">启用站点</span>
           <NSwitch v-model:value="input.enabled" />
+        </div>
+        <div class="site-switch-row">
+          <div>
+            <span class="site-switch-label">HTTPS</span>
+            <p v-if="input.port === 443" class="muted">
+              开启后这个端口改为 HTTPS，并生成本地证书。首次开启时，Windows 会询问是否信任本环境的证书颁发机构。
+            </p>
+            <p v-else class="muted">
+              开启后为该域名生成证书，并增加 443 端口。原来的 HTTP 端口仍可访问。首次开启时，Windows 会询问是否信任本环境的证书颁发机构。
+            </p>
+          </div>
+          <NSwitch v-model:value="input.https" />
         </div>
       </section>
       <section v-if="mode === 'php'" class="site-form-section">

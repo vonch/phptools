@@ -143,4 +143,4 @@ go run ./cmd/database-smoke -help
 
 `cmd/health-smoke` 和 `cmd/port-smoke` 必须显式传入只读 Nginx 包目录 `-source`；`cmd/rewritecheck` 必须显式传入已安装 PHP 8.0 与 Nginx 的只读环境目录 `-source-root`，不再依赖以前保留的测试环境。
 
-Wails v3 当前固定预发行版本，升级时需要重新验收窗口、托盘、绑定与服务生命周期。首版不包含旧环境迁移、本地 HTTPS、Composer 或 Apache。
+Wails v3 当前固定预发行版本，升级时需要重新验收窗口、托盘、绑定与服务生命周期。首版不包含旧环境迁移、Composer 或 Apache。站点可以生成本地 HTTPS 证书：证书由当前环境自己的颁发机构签名，Nginx 在 443 端口使用，首次开启时由 Windows 询问是否信任该机构。
