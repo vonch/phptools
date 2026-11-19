@@ -414,6 +414,7 @@ const allColumns = computed<DataTableBaseColumn<Site>[]>(() => [
   {
     title: "操作",
     key: "actions",
+    fixed: "right",
     className: "site-actions-cell",
     render: (site) =>
       h("div", { class: "site-actions" }, [
@@ -865,36 +866,11 @@ const columns = computed(() =>
   display: flex;
   flex-direction: column;
 }
-.site-table :deep(.n-data-table-tr) {
-  position: relative;
-}
-.site-table :deep(.n-data-table-th.site-actions-cell),
-.site-table :deep(.n-data-table-td.site-actions-cell) {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  box-sizing: border-box;
-  width: 210px;
-  padding: 0 12px;
-  border-bottom: 1px solid var(--n-merged-border-color);
-}
-.site-table :deep(.n-data-table-th.site-actions-cell) {
-  background: var(--n-merged-th-color);
-}
-.site-table :deep(.n-data-table-td.site-actions-cell) {
-  background: var(--n-merged-td-color);
-}
-.site-table :deep(.n-data-table-td.site-actions-cell.n-data-table-td--hover) {
-  background: var(--n-merged-td-color-hover);
-}
 .site-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  width: 100%;
   gap: 4px;
   white-space: nowrap;
 }
