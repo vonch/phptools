@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, h, onMounted, ref, watch } from "vue";
+import { useFillHeight } from "../useFillHeight";
 import {
   NButton,
   NCard,
@@ -33,6 +34,7 @@ import { sites, snapshot, tasks } from "../state";
 import { isActiveTask, type CertificateSortableKey, type CertificateViewPreferences, type SiteCertificate } from "../types";
 
 const { busy, run } = useAction();
+const { frame: tableFrame, height: tableHeight } = useFillHeight();
 const email = ref("");
 const showImport = ref(false);
 const importSiteID = ref("");
@@ -303,10 +305,11 @@ watch(certificateTask, (task, previous) => {
         </NPopover>
       </div>
     </div>
-    <div v-if="rows.length" class="certificate-table-frame">
+    <div v-if="rows.length" ref="tableFrame" class="certificate-table-frame">
       <NDataTable
         class="certificate-table"
         flex-height
+        :style="tableHeight ? { height: `${tableHeight}px` } : undefined"
         :theme-overrides="{ tdColorSorting: 'var(--n-td-color)', thColorSorting: 'var(--n-th-color)' }"
         :columns="columns"
         :data="filtered"
@@ -391,8 +394,8 @@ watch(certificateTask, (task, previous) => {
 .certificate-toolbar {
   flex: 0 0 auto;
 }
-.certificates-panel :deep(.n-card__content) {
-  flex: 1 1 auto;
+.certificates-panel :deep(.n-card-content) {
+  flex: 1 1 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -439,14 +442,11 @@ watch(certificateTask, (task, previous) => {
   font-size: 12px;
 }
 .certificate-table-frame {
-  position: relative;
   flex: 1 1 0;
   min-height: 0;
 }
 .certificate-table {
-  position: absolute;
-  inset: 0;
-  height: auto;
+  height: 100%;
   min-height: 0;
 }
 </style>

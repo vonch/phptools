@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, h, ref, type Component } from "vue";
+import { useFillHeight } from "../useFillHeight";
 import {
   NAlert,
   NButton,
@@ -39,6 +40,7 @@ import { defaultSiteView, nextSiteSort, orderedSites } from "../siteTable";
 import { errorText, instances, navigate, sites, snapshot } from "../state";
 import type { RewritePreset, Site, SiteSortableKey, SiteViewPreferences } from "../types";
 const { busy, run, confirm, message: notify } = useAction();
+const { frame: tableFrame, height: tableHeight } = useFillHeight();
 const show = ref(false);
 const showBatch = ref(false);
 const batchText = ref("");
@@ -611,10 +613,11 @@ const columns = computed(() =>
         </NPopover>
       </div>
     </div>
-    <div v-if="sites.length" class="site-table-frame">
+    <div v-if="sites.length" ref="tableFrame" class="site-table-frame">
     <NDataTable
       class="site-table"
       flex-height
+      :style="tableHeight ? { height: `${tableHeight}px` } : undefined"
       :theme-overrides="{ tdColorSorting: 'var(--n-td-color)', thColorSorting: 'var(--n-th-color)' }"
       :columns="columns"
       :data="filtered"
@@ -1020,22 +1023,19 @@ const columns = computed(() =>
   flex-direction: column;
   overflow: hidden;
 }
-.sites-panel :deep(.n-card__content) {
-  flex: 1 1 auto;
+.sites-panel :deep(.n-card-content) {
+  flex: 1 1 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 .site-table-frame {
-  position: relative;
   flex: 1 1 0;
   min-height: 0;
 }
 .site-table {
-  position: absolute;
-  inset: 0;
-  height: auto;
+  height: 100%;
   min-height: 0;
 }
 .site-actions {
