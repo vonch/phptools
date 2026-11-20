@@ -170,6 +170,155 @@ func siteForSave(input model.Site, existing []model.Site) (model.Site, error) {
 	return input, errors.New("所编辑站点不存在")
 }
 
+const maxBatchSites = 50
+
+func (a *App) CreateSites(inputs []model.Site) ([]model.Site, error) {
+	if err := a.needRoot(); err != nil {
+		return nil, err
+	}
+	if len(inputs) == 0 {
+		return nil, errors.New("请至少填写一个站点")
+	}
+	if len(inputs) > maxBatchSites {
+		return nil, fmt.Errorf("一次最多创建 %d 个站点", maxBatchSites)
+	}
+	a.opMu.Lock()
+	defer a.opMu.Unlock()
+	a.mu.RLock()
+	old := append([]model.Site{}, a.data.Sites...)
+	instances := append([]model.Instance{}, a.data.Instances...)
+	root := a.data.Settings.Root
+	a.mu.RUnlock()
+	var createdDirs []string
+	discardCreated := func() {
+		for _, dir := range createdDirs {
+			_ = os.RemoveAll(dir)
+		}
+	}
+	prepared := make([]model.Site, 0, len(inputs))
+	others := append([]model.Site{}, old...)
+	for _, input := range inputs {
+		if strings.TrimSpace(input.ID) != "" || strings.TrimSpace(input.Root) != "" {
+			discardCreated()
+			return nil, fmt.Errorf("站点%s只能新建项目", batchSiteLabel(input))
+		}
+		input.Entry = ""
+		next, err := siteForSave(input, old)
+		if err != nil {
+			discardCreated()
+			return nil, batchSiteError(input, err)
+		}
+		for _, site := range others {
+			if site.ID == next.ID {
+				discardCreated()
+				return nil, batchSiteError(input, errors.New("站点 ID 无效"))
+			}
+		}
+		dir, err := sites.CreateNewProject(root, next.Name, next.Domain, next.ProjectFolder)
+		if err != nil {
+			discardCreated()
+			return nil, batchSiteError(input, err)
+		}
+		createdDirs = append(createdDirs, dir)
+		next.Root = dir
+		next.ProjectFolder = ""
+		next, err = sites.Validate(next, others, instances)
+		if err != nil {
+			discardCreated()
+			return nil, batchSiteError(next, err)
+		}
+		if next.PHPInstanceID != "" {
+			for _, v := range instances {
+				if v.ID != next.PHPInstanceID {
+					continue
+				}
+				p, err := a.packageByID(v.PackageID)
+				if err != nil {
+					discardCreated()
+					return nil, batchSiteError(next, err)
+				}
+				if err = services.ValidatePHPPath(p, filepath.Join(next.Root, next.Entry)); err != nil {
+					discardCreated()
+					return nil, batchSiteError(next, err)
+				}
+			}
+		}
+		prepared = append(prepared, next)
+		others = append(others, next)
+	}
+	updated := make([]model.Site, 0, len(prepared)+len(old))
+	updated = append(updated, prepared...)
+	updated = append(updated, old...)
+	var restores []func()
+	restoreAll := func() {
+		for index := len(restores) - 1; index >= 0; index-- {
+			restores[index]()
+		}
+	}
+	needsTrust := false
+	for _, site := range prepared {
+		if !site.HTTPS {
+			continue
+		}
+		needsTrust = true
+		backup, err := sites.BackupCertificate(root, site.ID)
+		if err != nil {
+			restoreAll()
+			discardCreated()
+			return nil, batchSiteError(site, err)
+		}
+		names := []string{site.Domain}
+		if site.SecondDomain != "" {
+			names = append(names, site.SecondDomain)
+		}
+		if err = sites.EnsureCertificate(root, site.ID, names...); err != nil {
+			restoreAll()
+			discardCreated()
+			return nil, batchSiteError(site, err)
+		}
+		id, saved := site.ID, backup
+		restores = append(restores, func() {
+			_ = sites.RestoreCertificate(root, id, saved)
+		})
+	}
+	if needsTrust {
+		if err := sites.TrustCA(root); err != nil {
+			restoreAll()
+			discardCreated()
+			return nil, err
+		}
+	}
+	if err := a.changeSites(old, updated, instances); err != nil {
+		restoreAll()
+		discardCreated()
+		return nil, err
+	}
+	a.notify()
+	return prepared, nil
+}
+
+func batchSiteLabel(site model.Site) string {
+	name := strings.TrimSpace(site.Name)
+	domain := strings.TrimSpace(site.Domain)
+	switch {
+	case name != "" && domain != "" && !strings.EqualFold(name, domain):
+		return fmt.Sprintf("「%s」（%s）", name, domain)
+	case domain != "":
+		return "「" + domain + "」"
+	case name != "":
+		return "「" + name + "」"
+	default:
+		return ""
+	}
+}
+
+func batchSiteError(site model.Site, err error) error {
+	if label := batchSiteLabel(site); label != "" {
+		return fmt.Errorf("站点%s：%w", label, err)
+	}
+	return err
+}
+
 func (a *App) DeleteSite(id string) error {
 	if err := a.needRoot(); err != nil {
 		return err

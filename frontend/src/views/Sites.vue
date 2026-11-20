@@ -30,13 +30,21 @@ import {
 } from "@vicons/ionicons5";
 import { api } from "../api";
 import { useAction } from "../composables";
-import { databaseNameFromSite, domainFromName, folderFromName } from "../siteDefaults";
+import { databaseNameFromSite, domainFromName, folderFromName, parseBatchSites } from "../siteDefaults";
 import { httpsFormStatus } from "../siteHttps";
 import { defaultSiteView, nextSiteSort, orderedSites } from "../siteTable";
 import { errorText, instances, navigate, sites, snapshot } from "../state";
 import type { RewritePreset, Site, SiteSortableKey, SiteViewPreferences } from "../types";
 const { busy, run, confirm, message: notify } = useAction();
 const show = ref(false);
+const showBatch = ref(false);
+const batchText = ref("");
+const batchPort = ref(80);
+const batchMode = ref<"static" | "php">("static");
+const batchPHP = ref("");
+const batchHTTPS = ref(false);
+const batchForceHTTPS = ref(false);
+const batchRewriteID = ref("__default__");
 const search = ref("");
 const showColumns = ref(false);
 const hiddenColumnsDraft = ref<string[]>([]);
@@ -259,6 +267,60 @@ function setCreateDatabase(value: boolean) {
   if (!mysqlInstanceId.value && mysqlOptions.value.length === 1)
     mysqlInstanceId.value = mysqlOptions.value[0].value;
 }
+function openBatch() {
+  batchText.value = "";
+  batchPort.value = 80;
+  batchMode.value = "static";
+  batchPHP.value = phpOptions.value.length === 1 ? phpOptions.value[0].value : "";
+  batchHTTPS.value = false;
+  batchForceHTTPS.value = false;
+  batchRewriteID.value = defaultPreset;
+  showBatch.value = true;
+  void ensurePresets();
+}
+function setBatchHttps(value: boolean) {
+  batchHTTPS.value = value;
+  if (!value) batchForceHTTPS.value = false;
+}
+function setBatchPort(value: number | null) {
+  batchPort.value = value ?? 80;
+  if (batchPort.value === 443) batchForceHTTPS.value = false;
+}
+function setBatchMode(value: "static" | "php") {
+  batchMode.value = value;
+  if (value === "php" && !batchPHP.value && phpOptions.value.length === 1) {
+    batchPHP.value = phpOptions.value[0].value;
+  }
+}
+async function saveBatch() {
+  let drafts;
+  try {
+    drafts = parseBatchSites(batchText.value);
+  } catch (error) {
+    notify.error(errorText(error));
+    return;
+  }
+  const rewrite = batchRewriteID.value === defaultPreset
+    ? ""
+    : rewritePresets.value.find((preset) => preset.id === batchRewriteID.value)?.rules ?? "";
+  const created = await run(
+    () => api.CreateSites(drafts.map((draft) => ({
+      ...emptySite(),
+      name: draft.name,
+      domain: draft.domain,
+      projectFolder: draft.projectFolder,
+      port: batchPort.value,
+      https: batchHTTPS.value,
+      forceHttps: batchHTTPS.value && batchPort.value !== 443 && batchForceHTTPS.value,
+      phpInstanceId: batchMode.value === "php" ? batchPHP.value : "",
+      rewrite,
+    }))),
+    batchHTTPS.value
+      ? `已创建 ${drafts.length} 个站点，并生成了本地 HTTPS 证书`
+      : `已创建 ${drafts.length} 个站点`,
+  );
+  if (created) showBatch.value = false;
+}
 function open(site?: Site) {
   input.value = site ? { ...site } : emptySite();
   newProject.value = !site;
@@ -472,11 +534,14 @@ const columns = computed(() =>
   <div class="sites-page">
   <div class="page-heading">
     <h1>站点</h1>
-    <NButton type="primary" @click="open()"
-      ><template #icon
-        ><NIcon><AddOutline /></NIcon></template
-      >添加站点</NButton
-    >
+    <div class="heading-actions">
+      <NButton :disabled="busy" @click="openBatch">批量建站</NButton>
+      <NButton type="primary" @click="open()"
+        ><template #icon
+          ><NIcon><AddOutline /></NIcon></template
+        >添加站点</NButton
+      >
+    </div>
   </div>
   <NAlert
     v-if="!hasNginx"
@@ -810,6 +875,77 @@ const columns = computed(() =>
       ></template
     ></NModal
   >
+  <NModal
+    v-model:show="showBatch"
+    preset="card"
+    title="批量建站"
+    class="site-modal"
+    :mask-closable="false"
+  >
+    <NForm label-placement="top">
+      <NFormItem label="站点列表" required>
+        <NInput
+          v-model:value="batchText"
+          type="textarea"
+          placeholder="我的商店&#10;blog.test&#10;演示 demo.test"
+          :autosize="{ minRows: 6, maxRows: 12 }"
+          :input-props="{ spellcheck: false }"
+        />
+      </NFormItem>
+      <p class="muted">每行一个站点，一次最多 50 个。只写名称时自动生成 .test 域名；指定域名时写成「名称 域名」。每个站点都会在 sites 目录生成项目文件夹和静态首页。</p>
+      <div class="form-grid">
+        <NFormItem label="站点模式">
+          <NSelect
+            :value="batchMode"
+            :options="[
+              { label: '静态站点', value: 'static' },
+              { label: '通用 PHP 入口', value: 'php' },
+            ]"
+            @update:value="setBatchMode"
+          />
+        </NFormItem>
+        <NFormItem label="HTTP 端口" required>
+          <NInputNumber :value="batchPort" :min="1" :max="65535" :precision="0" @update:value="setBatchPort" />
+        </NFormItem>
+      </div>
+      <NFormItem v-if="batchMode === 'php'" label="PHP 服务实例" required>
+        <NSelect v-model:value="batchPHP" :options="phpOptions" placeholder="选择 PHP 实例" />
+      </NFormItem>
+      <NAlert v-if="batchMode === 'php' && !phpOptions.length" type="warning">请先创建 PHP 实例。</NAlert>
+      <NFormItem label="伪静态">
+        <NSelect
+          v-model:value="batchRewriteID"
+          :options="rewriteOptions.filter((option) => option.value !== customPreset)"
+          :loading="presetsLoading"
+        />
+      </NFormItem>
+      <div class="site-switch-row">
+        <div>
+          <span class="site-switch-label">HTTPS</span>
+          <p class="muted">为每个站点生成本地 HTTPS 证书。</p>
+        </div>
+        <NSwitch :value="batchHTTPS" @update:value="setBatchHttps" />
+      </div>
+      <div v-if="batchHTTPS" class="site-switch-row">
+        <div>
+          <span class="site-switch-label">HTTP 强制跳转 HTTPS</span>
+          <p class="muted">{{ batchPort === 443 ? "当前端口已是 HTTPS，没有可跳转的 HTTP 端口。请把端口改为 80。" : "用 HTTP 访问时跳转到 HTTPS。" }}</p>
+        </div>
+        <NSwitch v-model:value="batchForceHTTPS" :disabled="batchPort === 443" />
+      </div>
+    </NForm>
+    <template #footer>
+      <NSpace justify="end">
+        <NButton :disabled="busy" @click="showBatch = false">取消</NButton>
+        <NButton
+          type="primary"
+          :loading="busy"
+          :disabled="!batchText.trim() || !batchPort || (batchMode === 'php' && !batchPHP)"
+          @click="saveBatch"
+        >创建</NButton>
+      </NSpace>
+    </template>
+  </NModal>
 </template>
 
 <style scoped>

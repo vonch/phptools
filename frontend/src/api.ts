@@ -116,6 +116,7 @@ interface DesktopAPI {
   StartAll(): Promise<string>;
   StopAll(): Promise<string>;
   SaveSite(site: Site): Promise<Site>;
+  CreateSites(sites: Site[]): Promise<Site[]>;
   DeleteSite(id: string): Promise<void>;
   GetCertificates(): Promise<CertificatePage>;
   ApplyPublicCertificate(siteID: string, email: string): Promise<string>;
@@ -140,6 +141,12 @@ export const api: DesktopAPI = {
   GetState: async () => (await binding.GetState()) as Snapshot,
   CreateInstance: async (input) =>
     (await binding.CreateInstance(input)) as Instance,
+  CreateSites: async (sites) =>
+    (await binding.CreateSites(sites.map((site) => ({
+      ...site,
+      forceHttps: site.forceHttps ?? false,
+      phpPathInfo: site.phpPathInfo ?? false,
+    })))) ?? [],
   ListDatabases: async (instanceID) =>
     (await binding.ListDatabases(instanceID)) ?? [],
   ListManagedDatabases: async (instanceID) =>
