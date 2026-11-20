@@ -255,11 +255,17 @@ watch(certificateTask, (task, previous) => {
         </NTooltip>
       </span>
     </template>
-    <NForm label-placement="left" class="certificate-email">
-      <NFormItem label="通知邮箱">
-        <NInput v-model:value="email" placeholder="用于接收证书到期通知" style="max-width: 320px" />
-      </NFormItem>
-    </NForm>
+    <template #header-extra>
+      <NForm label-placement="left" :show-feedback="false" class="certificate-email">
+        <NFormItem label="通知邮箱">
+          <NInput
+            v-model:value="email"
+            placeholder="用于接收证书到期通知"
+            :input-props="{ 'aria-label': '通知邮箱' }"
+          />
+        </NFormItem>
+      </NForm>
+    </template>
     <div class="table-toolbar certificate-toolbar">
       <div class="section-label">
         全部证书 <NTag size="small" :bordered="false">{{ search.trim() ? `${filtered.length} / ${rows.length}` : rows.length }}</NTag>
@@ -402,7 +408,6 @@ watch(certificateTask, (task, previous) => {
   overflow: hidden;
 }
 .certificates-panel :deep(.n-card-header),
-.certificate-email,
 .certificate-toolbar {
   flex: 0 0 auto;
 }
@@ -441,7 +446,13 @@ watch(certificateTask, (task, previous) => {
   line-height: 1.7;
 }
 .certificate-email {
-  margin-bottom: 0;
+  margin: 0;
+}
+.certificate-email :deep(.n-form-item) {
+  margin: 0;
+}
+.certificate-email :deep(.n-input) {
+  width: 260px;
 }
 .certificate-toolbar {
   flex-wrap: wrap;
