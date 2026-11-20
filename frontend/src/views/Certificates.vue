@@ -439,10 +439,14 @@ watch(certificateTask, (task, previous) => {
   font-size: 12px;
 }
 .certificate-table-frame {
-  flex: 1 1 auto;
+  position: relative;
+  flex: 1 1 0;
   min-height: 0;
 }
 .certificate-table {
-  height: 100%;
+  position: absolute;
+  inset: 0;
+  height: auto;
+  min-height: 0;
 }
 </style>
