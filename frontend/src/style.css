@@ -188,6 +188,8 @@ button {
   gap: 18px;
 }
 .page-content {
+  display: flex;
+  flex-direction: column;
   padding: 30px 30px 22px;
   overflow: auto;
   flex: 1;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, ref } from "vue";
+import { computed, h, ref, type Component } from "vue";
 import {
   NAlert,
   NButton,
@@ -24,9 +24,12 @@ import {
 } from "naive-ui";
 import {
   AddOutline,
+  CreateOutline,
   FolderOpenOutline,
+  OpenOutline,
   OptionsOutline,
   SearchOutline,
+  TrashOutline,
 } from "@vicons/ionicons5";
 import { api } from "../api";
 import { useAction } from "../composables";
@@ -56,7 +59,7 @@ const columnOptions = [
   { key: "enabled", label: "启用", width: 72, minWidth: 64 },
   { key: "createdAt", label: "添加日期", width: 165, minWidth: 130 },
   { key: "lastActiveAt", label: "最近活动日期", width: 165, minWidth: 130 },
-  { key: "actions", label: "操作", width: 210, minWidth: 210 },
+  { key: "actions", label: "操作", width: 148, minWidth: 136 },
 ];
 const columnWidths = ref<Record<string, number>>({});
 function columnSize(column: typeof columnOptions[number]) {
@@ -399,11 +402,19 @@ function remove(site: Site) {
     () => api.DeleteSite(site.id),
   );
 }
-const action = (label: string, callback: () => void) =>
+const action = (label: string, icon: Component, callback: () => void, danger = false) =>
   h(
     NButton,
-    { size: "tiny", secondary: true, disabled: busy.value, onClick: callback },
-    { default: () => label },
+    {
+      size: "small",
+      quaternary: true,
+      type: danger ? "error" : "default",
+      disabled: busy.value,
+      title: label,
+      "aria-label": label,
+      onClick: callback,
+    },
+    { icon: () => h(NIcon, { size: 16 }, { default: () => h(icon) }) },
   );
 const instanceNames = computed(() => {
   const names = new Map<string, string>();
@@ -489,24 +500,14 @@ const allColumns = computed<DataTableBaseColumn<Site>[]>(() => [
     className: "site-actions-cell",
     render: (site) =>
       h("div", { class: "site-actions" }, [
-        action("访问", () => {
+        action("访问", OpenOutline, () => {
           void run(() => api.VisitSite(site.id));
         }),
-        action("编辑", () => open(site)),
-        action("目录", () => {
+        action("编辑", CreateOutline, () => open(site)),
+        action("目录", FolderOpenOutline, () => {
           void run(() => api.OpenDirectory(site.root));
         }),
-        h(
-          NButton,
-          {
-            size: "tiny",
-            quaternary: true,
-            type: "error",
-            disabled: busy.value,
-            onClick: () => remove(site),
-          },
-          { default: () => "删除" },
-        ),
+        action("删除", TrashOutline, () => remove(site), true),
       ]),
   },
 ]);
@@ -613,6 +614,7 @@ const columns = computed(() =>
     <div v-if="sites.length" class="site-table-frame">
     <NDataTable
       class="site-table"
+      flex-height
       :theme-overrides="{ tdColorSorting: 'var(--n-td-color)', thColorSorting: 'var(--n-th-color)' }"
       :columns="columns"
       :data="filtered"
@@ -950,9 +952,11 @@ const columns = computed(() =>
 
 <style scoped>
 .sites-page {
-  min-height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 .sites-page > .page-heading,
 .sites-page > .footnote,
@@ -1011,21 +1015,37 @@ const columns = computed(() =>
 }
 .sites-panel {
   flex: 1 1 auto;
-  min-height: 240px;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 .sites-panel :deep(.n-card__content) {
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+}
+.site-table-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.site-table {
+  height: 100%;
 }
 .site-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   width: 100%;
-  gap: 4px;
+  gap: 0;
   white-space: nowrap;
+}
+.site-actions :deep(.n-button) {
+  width: 28px;
+  height: 28px;
+  padding: 0;
 }
 .site-runtime {
   display: inline-block;
@@ -1046,9 +1066,11 @@ const columns = computed(() =>
   color: #66717d;
 }
 .site-toolbar {
+  flex: 0 0 auto;
   flex-wrap: wrap;
   align-items: flex-start;
   padding-bottom: 12px;
+  background: #fff;
 }
 .site-toolbar > .section-label {
   min-height: 34px;
