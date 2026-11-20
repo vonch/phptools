@@ -138,11 +138,29 @@ function selectPage(value: string) {
 function cancelTask(id: string) {
   void run(() => api.CancelTask(id));
 }
+let sitesShortcutPromptOpen = false;
+function offerSitesShortcut() {
+  if (sitesShortcutPromptOpen) return;
+  sitesShortcutPromptOpen = true;
+  dialog.info({
+    title: "创建网站根目录快捷方式",
+    content: "是否在桌面创建「网站根目录」快捷方式？之后可以从桌面直接打开站点文件所在的目录。",
+    positiveText: "创建",
+    negativeText: "暂不",
+    onPositiveClick: () => run(() => api.CreateSitesRootShortcut(), "已在桌面创建网站根目录快捷方式"),
+    onAfterLeave: () => {
+      sitesShortcutPromptOpen = false;
+    },
+  });
+}
 function setRoot() {
   void run(async () => {
     await api.SetRoot(rootInput.value.trim());
     await api.StartInstalledPHP();
-  }, "环境目录已就绪");
+    return true;
+  }, "环境目录已就绪").then((ready) => {
+    if (ready) offerSitesShortcut();
+  });
 }
 let stopUpdates: (() => void) | undefined;
 let stopAppUpdateChecks: (() => void) | undefined;

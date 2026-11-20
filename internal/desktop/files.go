@@ -123,6 +123,24 @@ func (a *App) ReadLog(kind, id string, lines int) (string, error) {
 	return strings.Join(text, "\n"), nil
 }
 
+func (a *App) sitesDirectory() (string, error) {
+	if err := a.needRoot(); err != nil {
+		return "", err
+	}
+	a.mu.RLock()
+	root := a.data.Settings.Root
+	a.mu.RUnlock()
+	return filepath.Join(root, "sites"), nil
+}
+
+func (a *App) OpenSitesRoot() error {
+	dir, err := a.sitesDirectory()
+	if err != nil {
+		return err
+	}
+	return a.OpenDirectory(dir)
+}
+
 func (a *App) OpenDirectory(path string) error {
 	if !filepath.IsAbs(path) {
 		return errors.New("目录必须是绝对路径")

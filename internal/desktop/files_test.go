@@ -10,6 +10,22 @@ import (
 	"phptools/internal/model"
 )
 
+func TestOpenSitesRootOpensTheEnvironmentSitesDirectory(t *testing.T) {
+	var opened string
+	a := testApp(t)
+	a.hooks.OpenDirectory = func(path string) error {
+		opened = path
+		return nil
+	}
+	if err := a.OpenSitesRoot(); err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(a.data.Settings.Root, "sites")
+	if opened != want {
+		t.Fatalf("opened %s, want %s", opened, want)
+	}
+}
+
 func TestOpenDirectoryUsesExactNormalizedDirectoryAndReportsFailure(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "中文 project, with spaces")
 	if err := os.Mkdir(dir, 0700); err != nil {
