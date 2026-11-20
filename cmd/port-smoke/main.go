@@ -143,7 +143,7 @@ func run(parent context.Context, root, source string) (runErr error) {
 			runErr = errors.Join(runErr, err)
 		}
 	}()
-	siteB := filepath.Join(root, "sites", "existing.conf")
+	siteB := filepath.Join(root, "conf", "existing.conf")
 	if err := writeSite(siteB, portB, "original site"); err != nil {
 		return err
 	}
@@ -192,7 +192,7 @@ func run(parent context.Context, root, source string) (runErr error) {
 	}
 	defer c.Close()
 	portC := c.Addr().(*net.TCPAddr).Port
-	siteC := filepath.Join(root, "sites", "new.conf")
+	siteC := filepath.Join(root, "conf", "new.conf")
 	if err := writeSite(siteC, portC, "new site"); err != nil {
 		return err
 	}

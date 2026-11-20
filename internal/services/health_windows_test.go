@@ -155,7 +155,7 @@ func TestWindowsFullHealthDetectsIncludedNginxPortWithoutStarting(t *testing.T) 
 	defer listener.Close()
 	port := listener.Addr().(*net.TCPAddr).Port
 	site := "server { listen 127.0.0.1:" + strconv.Itoa(port) + "; server_name conflict.test; }\n"
-	if err := os.WriteFile(filepath.Join(m.root, "sites", "conflict.conf"), []byte(site), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(m.root, "conf", "conflict.conf"), []byte(site), 0600); err != nil {
 		t.Fatal(err)
 	}
 	got, items := m.CheckHealth(context.Background(), pkg, i, true)

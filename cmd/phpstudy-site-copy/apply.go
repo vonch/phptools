@@ -141,7 +141,7 @@ func applyTarget(ctx context.Context, root, planPath, validationPath string) (ru
 }
 
 func backupSites(root string, nginx model.Instance, mainConfig []byte) (string, error) {
-	entries, err := os.ReadDir(filepath.Join(root, "sites"))
+	entries, err := os.ReadDir(sites.ConfigDirectory(root))
 	if err != nil {
 		return "", err
 	}
@@ -150,7 +150,7 @@ func backupSites(root string, nginx model.Instance, mainConfig []byte) (string, 
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".conf") {
 			continue
 		}
-		data, err := os.ReadFile(filepath.Join(root, "sites", entry.Name()))
+		data, err := os.ReadFile(filepath.Join(sites.ConfigDirectory(root), entry.Name()))
 		if err != nil {
 			return "", err
 		}

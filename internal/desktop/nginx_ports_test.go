@@ -57,7 +57,7 @@ func TestSaveSiteRejectsExternalSitePortAndRollsBackBeforeHosts(t *testing.T) {
 	if err != nil || len(stored) != 0 {
 		t.Fatalf("failed site persisted: %+v %v", stored, err)
 	}
-	files, err := filepath.Glob(filepath.Join(a.data.Settings.Root, "sites", "*.conf"))
+	files, err := filepath.Glob(filepath.Join(a.data.Settings.Root, "conf", "*.conf"))
 	if err != nil || len(files) != 0 {
 		t.Fatalf("failed site configuration was not rolled back: %v %v", files, err)
 	}

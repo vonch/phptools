@@ -271,7 +271,7 @@ func run(parent context.Context, baseRoot, source string) (runErr error) {
 	server := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, "external acceptance listener") }), ReadHeaderTimeout: time.Second}
 	go func() { _ = server.Serve(listener) }()
 	defer server.Close()
-	siteConf := filepath.Join(root, "sites", "acceptance-manual.conf")
+	siteConf := filepath.Join(root, "conf", "acceptance-manual.conf")
 	conflictConfig := []byte(fmt.Sprintf("# acceptance-owned temporary site\nserver { listen 127.0.0.1:%d; server_name acceptance.invalid; location / { return 200 'acceptance'; } }\n", externalPort))
 	if err := os.WriteFile(siteConf, conflictConfig, 0600); err != nil {
 		return err

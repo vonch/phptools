@@ -233,7 +233,7 @@ func checkSiteHealth(root string, site model.Site, all []model.Site, instances [
 			add("php", "PHP 依赖", "ok", "已关联 "+php.Name, "")
 		}
 	}
-	path := filepath.Join(root, "sites", site.ID+".conf")
+	path := filepath.Join(sites.ConfigDirectory(root), site.ID+".conf")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		add("config", "站点配置", "error", fmt.Sprintf("无法读取站点配置：%v", err), "在站点管理中保存该站点，以重新生成配置并完成 Nginx 校验。")
@@ -241,7 +241,7 @@ func checkSiteHealth(root string, site model.Site, all []model.Site, instances [
 	}
 	resolved, err := filepath.EvalSymlinks(path)
 	if err != nil || !strings.EqualFold(filepath.Clean(path), filepath.Clean(resolved)) {
-		add("config", "站点配置", "error", "站点配置使用了链接或路径无法核实", "检查环境 sites 目录，恢复受管文件后保存站点。")
+		add("config", "站点配置", "error", "站点配置使用了链接或路径无法核实", "检查环境 conf 目录，恢复受管文件后保存站点。")
 		return items
 	}
 	if !bytes.Equal(data, []byte(sites.Render(root, validated, php))) {

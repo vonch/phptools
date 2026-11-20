@@ -81,7 +81,7 @@
 
 ## 数据与配置
 
-环境目录下分别保存 `packages`、`instances`、`sites`、`cache`、`logs`、`backups` 和 `metadata.db`。PHPTools 使用自己的组件和进程，不把环境目录放进其他软件的安装目录。
+环境目录下分别保存 `packages`、`instances`、`sites`、`conf`、`cache`、`logs`、`backups` 和 `metadata.db`。`sites` 只放项目目录，Nginx 站点配置放在 `conf`。打开已有环境时，会把原来放在 `sites` 里、由 PHPTools 生成的配置移到 `conf`，并改写 Nginx 的引用。PHPTools 使用自己的组件和进程，不把环境目录放进其他软件的安装目录。
 
 MySQL 密码由当前 Windows 用户的凭据管理器保存，元数据库不保存明文密码。移除实例只移除活动记录，保留实例目录、数据、凭据及 `retained-instance` 元数据。组件被活动实例引用时禁止卸载。MySQL 数据目录不能直接跨版本共用；首版不提供数据库升级、降级或旧环境迁移。
 

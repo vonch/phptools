@@ -215,7 +215,7 @@ func TestEnvironmentCheckCancellationKeepsCompletedRepairsAndSkipsRemainingOnes(
 
 func TestSiteHealthReportsProblemsWithoutCreatingOrOverwritingConfiguration(t *testing.T) {
 	runtimeRoot := t.TempDir()
-	if err := os.Mkdir(filepath.Join(runtimeRoot, "sites"), 0700); err != nil {
+	if err := os.Mkdir(filepath.Join(runtimeRoot, "conf"), 0700); err != nil {
 		t.Fatal(err)
 	}
 	projectRoot := t.TempDir()
@@ -236,7 +236,7 @@ func TestSiteHealthReportsProblemsWithoutCreatingOrOverwritingConfiguration(t *t
 			if test.modify != nil {
 				test.modify(&site)
 			}
-			path := filepath.Join(runtimeRoot, "sites", site.ID+".conf")
+			path := filepath.Join(runtimeRoot, "conf", site.ID+".conf")
 			if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 				t.Fatal(err)
 			}

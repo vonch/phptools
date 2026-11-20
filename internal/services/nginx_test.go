@@ -43,6 +43,26 @@ func nginxConfigFixture(t *testing.T) (*Manager, model.Instance) {
 	return m, i
 }
 
+func TestAdoptSiteConfigDirectoryRewritesTheOldInclude(t *testing.T) {
+	m, i := nginxConfigFixture(t)
+	previous := nginxQuote(filepath.Join(m.root, "sites", "*.conf"))
+	current := nginxQuote(m.siteConfigGlob())
+	data, err := os.ReadFile(i.ConfigPath)
+	if err != nil || !strings.Contains(string(data), current) {
+		t.Fatal("new nginx config does not include conf")
+	}
+	if err = os.WriteFile(i.ConfigPath, []byte(strings.Replace(string(data), current, previous, 1)), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err = m.AdoptSiteConfigDirectory(); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(i.ConfigPath)
+	if err != nil || strings.Contains(string(got), previous) || !strings.Contains(string(got), current) {
+		t.Fatalf("%s %v", got, err)
+	}
+}
+
 func TestNginxListenEndpointsIncludeSitePortsAndImplicitDefaults(t *testing.T) {
 	m, i := nginxConfigFixture(t)
 	config := `# listen 127.0.0.1:9999;
@@ -50,10 +70,10 @@ server { listen 127.0.0.1:80; listen 127.0.0.1:80; include fastcgi_params; }
 server { listen [::1]:443 ssl; }
 server { server_name implicit.test; }
 `
-	if err := os.WriteFile(filepath.Join(m.root, "sites", "site.conf"), []byte(config), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(m.root, "conf", "site.conf"), []byte(config), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(m.root, "sites", "disabled.conf.disabled"), []byte("server { listen 127.0.0.1:9998; }"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(m.root, "conf", "disabled.conf.disabled"), []byte("server { listen 127.0.0.1:9998; }"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	listens, err := m.nginxListenEndpoints(i)
@@ -82,7 +102,7 @@ func TestNginxListenEndpointsCheckRepeatedIncludeInEachServer(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(filepath.Dir(i.ConfigPath), "fastcgi_params"), []byte("listen 127.0.0.1:10080;\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(m.root, "sites", "site.conf"), []byte("server { include fastcgi_params; }\nserver { include fastcgi_params; }\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(m.root, "conf", "site.conf"), []byte("server { include fastcgi_params; }\nserver { include fastcgi_params; }\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	listens, err := m.nginxListenEndpoints(i)

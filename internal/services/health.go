@@ -334,7 +334,7 @@ func (m *Manager) healthFull(ctx context.Context, pkg model.Package, i model.Ins
 			if key == "include" && path == "fastcgi_params" {
 				path = filepath.Join(filepath.Dir(i.ConfigPath), path)
 			}
-			if key == "include" && samePath(path, filepath.Join(m.root, "sites", "*.conf")) {
+			if key == "include" && samePath(path, m.siteConfigGlob()) {
 				path = filepath.Dir(path)
 			}
 			if key == "include" || key == "error_log" || key == "access_log" || strings.HasSuffix(key, "_temp_path") {

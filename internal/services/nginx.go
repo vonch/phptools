@@ -115,6 +115,50 @@ func scanNginx(input string) ([]nginxDirective, error) {
 	return directives, nil
 }
 
+func (m *Manager) siteConfigGlob() string {
+	return filepath.Join(m.root, "conf", "*.conf")
+}
+
+func (m *Manager) AdoptSiteConfigDirectory() error {
+	previous := nginxQuote(filepath.Join(m.root, "sites", "*.conf"))
+	current := nginxQuote(m.siteConfigGlob())
+	entries, err := os.ReadDir(filepath.Join(m.root, "instances"))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return errors.New("无法读取 Nginx 实例目录")
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		path := filepath.Join(m.root, "instances", entry.Name(), "conf", "nginx.conf")
+		data, err := os.ReadFile(path)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return errors.New("无法读取 Nginx 配置")
+		}
+		text := string(data)
+		if !strings.Contains(text, previous) {
+			continue
+		}
+		updated := strings.ReplaceAll(text, previous, current)
+		tmp := path + ".tmp"
+		if err = os.WriteFile(tmp, []byte(updated), 0600); err != nil {
+			os.Remove(tmp)
+			return errors.New("无法更新 Nginx 的站点配置目录")
+		}
+		if err = os.Rename(tmp, path); err != nil {
+			os.Remove(tmp)
+			return errors.New("无法更新 Nginx 的站点配置目录")
+		}
+	}
+	return nil
+}
+
 func (m *Manager) validateNginxConfig(i model.Instance) error {
 	return m.inspectNginxConfig(i, nil)
 }
@@ -124,7 +168,7 @@ func (m *Manager) inspectNginxConfig(i model.Instance, visit func(nginxDirective
 	pid := filepath.Join(dir, "nginx.pid")
 	mime := filepath.Join(filepath.Dir(i.Executable), "conf", "mime.types")
 	params := filepath.Join(filepath.Dir(i.ConfigPath), "fastcgi_params")
-	siteGlob := filepath.Join(m.root, "sites", "*.conf")
+	siteGlob := m.siteConfigGlob()
 	data, err := os.ReadFile(i.ConfigPath)
 	if err != nil {
 		return err

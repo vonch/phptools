@@ -237,7 +237,10 @@ func WriteACMEHTTPConfig(root string, domains []string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	path := filepath.Join(root, "sites", "acme-http.conf")
+	path := filepath.Join(ConfigDirectory(root), "acme-http.conf")
+	if err = os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		return "", errors.New("无法准备站点配置目录")
+	}
 	tmp := path + ".tmp"
 	defer os.Remove(tmp)
 	if err = os.WriteFile(tmp, []byte(body), 0600); err != nil {

@@ -98,7 +98,7 @@ func (m *Manager) writeInitialConfig(pkg model.Package, i model.Instance) error 
 			"events { worker_connections 1024; }\nhttp {\n  include " + nginxQuote(filepath.Join(bin, "conf", "mime.types")) + ";\n  default_type application/octet-stream;\n" +
 			"  access_log " + nginxQuote(filepath.Join(filepath.Dir(i.LogPath), "access.log")) + ";\n  sendfile on;\n  keepalive_timeout 65;\n" +
 			fmt.Sprintf("  server {\n    listen 127.0.0.1:%d default_server;\n    server_name localhost;\n    location = /__phptools { return 200 'PHPTools is running'; add_header Content-Type text/plain; }\n    location / { return 404; }\n  }\n", i.Port) +
-			"  include " + nginxQuote(filepath.Join(m.root, "sites", "*.conf")) + ";\n}\n"
+			"  include " + nginxQuote(m.siteConfigGlob()) + ";\n}\n"
 	case "mysql":
 		if !(strings.HasPrefix(pkg.Version, "5.7.") || strings.HasPrefix(pkg.Version, "8.0.") || strings.HasPrefix(pkg.Version, "8.4.")) {
 			return errors.New("仅支持 MySQL 5.7、8.0 和 8.4")

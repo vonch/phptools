@@ -109,7 +109,7 @@ func (m *Manager) Create(ctx context.Context, pkg model.Package, input model.Ins
 		return model.Instance{}, errors.New("不支持的组件类型")
 	}
 	i.ConfigPath = filepath.Join(dir, "conf", name)
-	for _, path := range []string{filepath.Dir(i.ConfigPath), i.DataDir, filepath.Dir(i.LogPath), filepath.Join(m.root, "sites")} {
+	for _, path := range []string{filepath.Dir(i.ConfigPath), i.DataDir, filepath.Dir(i.LogPath), filepath.Join(m.root, "sites"), filepath.Join(m.root, "conf")} {
 		if err = os.MkdirAll(path, 0700); err != nil {
 			return model.Instance{}, err
 		}

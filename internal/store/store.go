@@ -63,7 +63,7 @@ func Open(root string) (*Store, error) {
 	} else {
 		return nil, err
 	}
-	for _, name := range []string{"packages", "instances", "sites", "logs", "cache", "backups"} {
+	for _, name := range []string{"packages", "instances", "sites", "conf", "logs", "cache", "backups"} {
 		if err := os.MkdirAll(filepath.Join(abs, name), 0700); err != nil {
 			return nil, err
 		}
