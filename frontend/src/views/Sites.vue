@@ -48,7 +48,7 @@ const columnOptions = [
   { key: "enabled", label: "启用", width: 72, minWidth: 64 },
   { key: "createdAt", label: "添加日期", width: 165, minWidth: 130 },
   { key: "lastActiveAt", label: "最近活动日期", width: 165, minWidth: 130 },
-  { key: "actions", label: "操作", width: 360, minWidth: 360 },
+  { key: "actions", label: "操作", width: 210, minWidth: 210 },
 ];
 const columnWidths = ref<Record<string, number>>({});
 function columnSize(column: typeof columnOptions[number]) {
@@ -433,9 +433,6 @@ const allColumns = computed<DataTableBaseColumn<Site>[]>(() => [
         action("编辑", () => open(site)),
         action("目录", () => {
           void run(() => api.OpenDirectory(site.root));
-        }),
-        action("打开站点根目录", () => {
-          void run(() => api.OpenSitesRoot());
         }),
         h(
           NButton,

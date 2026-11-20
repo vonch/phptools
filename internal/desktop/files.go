@@ -133,14 +133,6 @@ func (a *App) sitesDirectory() (string, error) {
 	return filepath.Join(root, "sites"), nil
 }
 
-func (a *App) OpenSitesRoot() error {
-	dir, err := a.sitesDirectory()
-	if err != nil {
-		return err
-	}
-	return a.OpenDirectory(dir)
-}
-
 func (a *App) OpenDirectory(path string) error {
 	if !filepath.IsAbs(path) {
 		return errors.New("目录必须是绝对路径")

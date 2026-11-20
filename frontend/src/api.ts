@@ -125,7 +125,6 @@ interface DesktopAPI {
   SaveConfig(instanceID: string, content: string): Promise<void>;
   ReadLog(kind: string, id: string, lines: number): Promise<string>;
   OpenDirectory(path: string): Promise<void>;
-  OpenSitesRoot(): Promise<void>;
   CreateSitesRootShortcut(): Promise<void>;
   VisitSite(id: string): Promise<void>;
   OpenOfficialSite(): Promise<void>;
