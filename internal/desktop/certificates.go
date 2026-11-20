@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
+	"strings"
 	"time"
 
 	"phptools/internal/model"
@@ -45,7 +45,7 @@ func (a *App) ApplyPublicCertificate(siteID, email string) (string, error) {
 	})
 }
 
-func (a *App) ImportPublicCertificate(siteID string) (string, error) {
+func (a *App) ImportPublicCertificate(siteID, certificate, privateKey string) (string, error) {
 	if err := a.needRoot(); err != nil {
 		return "", err
 	}
@@ -63,22 +63,7 @@ func (a *App) ImportPublicCertificate(siteID string) (string, error) {
 		}
 		return "", errors.New("请先填写有效域名")
 	}
-	if a.hooks.PickCertificate == nil {
-		return "", errors.New("证书文件选择器尚未初始化")
-	}
-	certPath, err := withoutDialogCancel(a.hooks.PickCertificate("选择证书文件", "证书文件", "*.crt;*.pem;*.cer"))
-	if err != nil || certPath == "" {
-		return "", err
-	}
-	certPEM, err := readCertificateFile(certPath)
-	if err != nil {
-		return "", err
-	}
-	keyPath, err := withoutDialogCancel(a.hooks.PickCertificate("选择私钥文件", "私钥文件", "*.key;*.pem"))
-	if err != nil || keyPath == "" {
-		return "", err
-	}
-	keyPEM, err := readCertificateFile(keyPath)
+	certPEM, keyPEM, err := pastedCertificate(certificate, privateKey)
 	if err != nil {
 		return "", err
 	}
@@ -168,19 +153,22 @@ func (a *App) installImportedCertificate(ctx context.Context, taskID, siteID str
 	return nil
 }
 
-func readCertificateFile(path string) ([]byte, error) {
-	if !filepath.IsAbs(path) {
-		return nil, errors.New("请选择证书或私钥文件")
+func pastedCertificate(certificate, privateKey string) ([]byte, []byte, error) {
+	certificate = strings.TrimSpace(certificate)
+	privateKey = strings.TrimSpace(privateKey)
+	if certificate == "" {
+		return nil, nil, errors.New("请填写公钥")
 	}
-	info, err := os.Stat(path)
-	if err != nil || info.IsDir() || info.Size() == 0 || info.Size() > 256*1024 {
-		return nil, errors.New("证书或私钥文件无效")
+	if privateKey == "" {
+		return nil, nil, errors.New("请填写私钥")
 	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, errors.New("无法读取证书或私钥文件")
+	if len(certificate) > 256*1024 || len(privateKey) > 256*1024 {
+		return nil, nil, errors.New("公钥或私钥内容过长")
 	}
-	return data, nil
+	if strings.ContainsRune(certificate, 0) || strings.ContainsRune(privateKey, 0) {
+		return nil, nil, errors.New("公钥或私钥内容无效")
+	}
+	return []byte(certificate), []byte(privateKey), nil
 }
 
 func (a *App) certificateSite(siteID string) (model.Site, error) {

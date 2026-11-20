@@ -50,7 +50,7 @@ func NormalizeImportedCertificate(domains []string, certPEM, keyPEM []byte, root
 		if _, err = leaf.Verify(opts); err != nil {
 			var unknown x509.UnknownAuthorityError
 			if errors.As(err, &unknown) {
-				return nil, nil, errors.New("系统不信任这张证书的颁发机构，请提供包含中间证书的完整证书文件")
+				return nil, nil, errors.New("系统不信任这张证书的颁发机构，请把中间证书和站点证书一起贴到公钥")
 			}
 			return nil, nil, errors.New("这张证书不能用于站点域名 " + domain)
 		}
@@ -73,13 +73,13 @@ func orderedCertificates(data []byte) (*x509.Certificate, []*x509.Certificate, [
 		}
 		cert, err := x509.ParseCertificate(block.Bytes)
 		if err != nil {
-			return nil, nil, nil, errors.New("证书文件无效")
+			return nil, nil, nil, errors.New("公钥无效")
 		}
 		certs = append(certs, cert)
 		blocks = append(blocks, pem.EncodeToMemory(block))
 	}
 	if len(certs) == 0 {
-		return nil, nil, nil, errors.New("证书文件无效")
+		return nil, nil, nil, errors.New("公钥无效")
 	}
 	return certs[0], certs, blocks, nil
 }

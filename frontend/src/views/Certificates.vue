@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, h, onMounted, ref, watch } from "vue";
-import { NButton, NCard, NDataTable, NEmpty, NForm, NFormItem, NInput, NSpace, NTag, type DataTableColumns } from "naive-ui";
+import { NButton, NCard, NDataTable, NEmpty, NForm, NFormItem, NInput, NModal, NSpace, NTag, type DataTableColumns } from "naive-ui";
 import { api } from "../api";
 import { useAction } from "../composables";
 import { snapshot, tasks } from "../state";
@@ -8,6 +8,10 @@ import { isActiveTask, type SiteCertificate } from "../types";
 
 const { busy, run } = useAction();
 const email = ref("");
+const showImport = ref(false);
+const importSiteID = ref("");
+const certificateText = ref("");
+const privateKeyText = ref("");
 const rows = ref<SiteCertificate[]>([]);
 const loaded = ref(false);
 const kindName: Record<SiteCertificate["kind"], string> = {
@@ -105,7 +109,23 @@ function apply(row: SiteCertificate) {
 }
 function importCertificate(row: SiteCertificate) {
   if (row.domains.length === 0 || certificateTask.value || busy.value) return;
-  void run(() => api.ImportPublicCertificate(row.siteId));
+  importSiteID.value = row.siteId;
+  certificateText.value = "";
+  privateKeyText.value = "";
+  showImport.value = true;
+}
+function closeImport() {
+  showImport.value = false;
+  certificateText.value = "";
+  privateKeyText.value = "";
+}
+async function submitImport() {
+  const siteID = importSiteID.value;
+  const certificate = certificateText.value;
+  const privateKey = privateKeyText.value;
+  if (!siteID || !certificate.trim() || !privateKey.trim() || certificateTask.value || busy.value) return;
+  const started = await run(() => api.ImportPublicCertificate(siteID, certificate, privateKey));
+  if (started) closeImport();
 }
 function useLocal(row: SiteCertificate) {
   if (row.kind !== "public" || certificateTask.value || busy.value) return;
@@ -121,7 +141,7 @@ watch(certificateTask, (task, previous) => {
 <template>
   <NCard title="公网证书" :bordered="false" class="panel">
     <p class="muted">
-      为站点域名申请 Let’s Encrypt 证书。域名需要解析到这台电脑，并且公网可以访问 80 端口。也可以添加已经申请好的证书文件和未加密私钥。证书需要包含站点域名。添加或申请成功后，站点会改用这张证书提供 HTTPS。
+      为站点域名申请 Let’s Encrypt 证书。域名需要解析到这台电脑，并且公网可以访问 80 端口。也可以在添加窗口里贴上已经申请好的公钥和未加密私钥。证书需要包含站点域名。添加或申请成功后，站点会改用这张证书提供 HTTPS。
     </p>
     <NForm label-placement="left" class="section-gap">
       <NFormItem label="通知邮箱">
@@ -131,4 +151,47 @@ watch(certificateTask, (task, previous) => {
     <NDataTable v-if="rows.length" :columns="columns" :data="rows" :bordered="false" />
     <NEmpty v-else-if="loaded" description="还没有站点。请先在站点管理中创建。" />
   </NCard>
+  <NModal
+    :show="showImport"
+    preset="card"
+    title="添加证书"
+    class="certificate-modal"
+    :mask-closable="false"
+    @update:show="(value) => { if (!value) closeImport(); }"
+  >
+    <p class="muted">
+      公钥填写证书内容，从 -----BEGIN CERTIFICATE----- 开始，中间证书可以贴在后面。私钥填写未加密的 PEM。
+    </p>
+    <NForm label-placement="top">
+      <NFormItem label="公钥" required>
+        <NInput
+          v-model:value="certificateText"
+          type="textarea"
+          placeholder="-----BEGIN CERTIFICATE-----"
+          :autosize="{ minRows: 6, maxRows: 10 }"
+          :input-props="{ spellcheck: false, autocomplete: 'off' }"
+        />
+      </NFormItem>
+      <NFormItem label="私钥" required>
+        <NInput
+          v-model:value="privateKeyText"
+          type="textarea"
+          placeholder="-----BEGIN PRIVATE KEY-----"
+          :autosize="{ minRows: 6, maxRows: 10 }"
+          :input-props="{ spellcheck: false, autocomplete: 'off' }"
+        />
+      </NFormItem>
+    </NForm>
+    <template #footer>
+      <NSpace justify="end">
+        <NButton :disabled="busy" @click="closeImport">取消</NButton>
+        <NButton
+          type="primary"
+          :loading="busy"
+          :disabled="!certificateText.trim() || !privateKeyText.trim()"
+          @click="submitImport"
+        >添加</NButton>
+      </NSpace>
+    </template>
+  </NModal>
 </template>

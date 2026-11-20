@@ -32,7 +32,6 @@ type Hooks struct {
 	PickSQLImport      func() (string, error)
 	PickSQLExport      func(string) (string, error)
 	PickDatabaseClient func() (string, error)
-	PickCertificate    func(title, filterName, pattern string) (string, error)
 	OpenDatabaseClient func(string) error
 	OpenURL            func(string) error
 	Exit               func()
@@ -56,7 +55,7 @@ type App struct {
 	activity     sites.ActivityReader
 }
 
-const appVersion = "0.1.62"
+const appVersion = "0.1.63"
 
 func New(configDir string, hooks Hooks) (*App, error) {
 	if configDir == "" {

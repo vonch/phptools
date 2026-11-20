@@ -695,6 +695,10 @@ p.muted {
 .form-modal {
   width: 490px;
 }
+.certificate-modal {
+  width: 640px;
+  max-width: calc(100vw - 48px);
+}
 .site-modal {
   width: 680px;
   max-width: calc(100vw - 48px);

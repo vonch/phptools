@@ -1,52 +1,29 @@
 package desktop
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
 	"phptools/internal/model"
 )
 
-func TestImportCertificateDialogAndInvalidFiles(t *testing.T) {
+func TestImportCertificateRejectsMissingAndInvalidText(t *testing.T) {
 	a := testApp(t)
 	a.data.Sites = []model.Site{{ID: "shop", Domain: "shop.com", Port: 80, Enabled: true}}
-	if _, err := a.ImportPublicCertificate("missing"); err == nil || !strings.Contains(err.Error(), "不存在") {
+	if _, err := a.ImportPublicCertificate("missing", "cert", "key"); err == nil || !strings.Contains(err.Error(), "不存在") {
 		t.Fatal(err)
 	}
-	if _, err := a.ImportPublicCertificate("shop"); err == nil || !strings.Contains(err.Error(), "选择器") {
+	if _, err := a.ImportPublicCertificate("shop", "  ", "key"); err == nil || !strings.Contains(err.Error(), "请填写公钥") {
 		t.Fatal(err)
 	}
-	a.hooks.PickCertificate = func(string, string, string) (string, error) { return "", nil }
-	if id, err := a.ImportPublicCertificate("shop"); id != "" || err != nil {
-		t.Fatalf("cancel is not an error: %q %v", id, err)
-	}
-	dir := t.TempDir()
-	a.hooks.PickCertificate = func(title, _, _ string) (string, error) {
-		if strings.Contains(title, "私钥") {
-			t.Fatal("key dialog opened after a bad certificate path")
-		}
-		return "relative.pem", nil
-	}
-	if _, err := a.ImportPublicCertificate("shop"); err == nil || !strings.Contains(err.Error(), "请选择") {
+	if _, err := a.ImportPublicCertificate("shop", "cert", " "); err == nil || !strings.Contains(err.Error(), "请填写私钥") {
 		t.Fatal(err)
 	}
-	cert := filepath.Join(dir, "site.crt")
-	key := filepath.Join(dir, "site.key")
-	if err := os.WriteFile(cert, []byte("not a certificate"), 0600); err != nil {
+	if _, err := a.ImportPublicCertificate("shop", "not a certificate", "not a key"); err == nil || !strings.Contains(err.Error(), "公钥无效") {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(key, []byte("not a key"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	a.hooks.PickCertificate = func(title, _, _ string) (string, error) {
-		if strings.Contains(title, "私钥") {
-			return key, nil
-		}
-		return cert, nil
-	}
-	if _, err := a.ImportPublicCertificate("shop"); err == nil || !strings.Contains(err.Error(), "证书文件无效") {
+	huge := strings.Repeat("a", 256*1024+1)
+	if _, err := a.ImportPublicCertificate("shop", huge, "key"); err == nil || !strings.Contains(err.Error(), "过长") {
 		t.Fatal(err)
 	}
 	if len(a.data.Tasks) != 0 {
