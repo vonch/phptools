@@ -36,6 +36,10 @@ func TestSQLDialogsCancellationValidationAndNoOverwrite(t *testing.T) {
 	if path, err := a.SelectSQLImport(); path != "" || err != nil {
 		t.Fatalf("dialog cancellation is not an error: %q %v", path, err)
 	}
+	a.hooks.PickSQLImport = func() (string, error) { return "", errors.New("cancelled by user") }
+	if path, err := a.SelectSQLImport(); path != "" || err != nil {
+		t.Fatalf("english dialog cancellation leaked: %q %v", path, err)
+	}
 	a.hooks.PickSQLImport = func() (string, error) { return "relative.sql", nil }
 	if _, err := a.SelectSQLImport(); err == nil {
 		t.Fatal("relative SQL path accepted")

@@ -119,7 +119,7 @@ func (a *App) SelectSQLImport() (string, error) {
 	if a.hooks.PickSQLImport == nil {
 		return "", errors.New("SQL 文件选择器尚未初始化")
 	}
-	path, err := a.hooks.PickSQLImport()
+	path, err := withoutDialogCancel(a.hooks.PickSQLImport())
 	if err != nil || path == "" {
 		return path, err
 	}
@@ -144,7 +144,7 @@ func (a *App) SelectSQLExport(database string) (string, error) {
 	if name == "" {
 		name = "database"
 	}
-	path, err := a.hooks.PickSQLExport(name + "-" + time.Now().Format("20060102-150405") + ".sql")
+	path, err := withoutDialogCancel(a.hooks.PickSQLExport(name + "-" + time.Now().Format("20060102-150405") + ".sql"))
 	if err != nil || path == "" {
 		return path, err
 	}

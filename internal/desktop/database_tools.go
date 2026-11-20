@@ -33,7 +33,7 @@ func (a *App) SelectDatabaseClient() (string, error) {
 	if a.hooks.PickDatabaseClient == nil {
 		return "", errors.New("客户端选择器尚未初始化")
 	}
-	path, err := a.hooks.PickDatabaseClient()
+	path, err := withoutDialogCancel(a.hooks.PickDatabaseClient())
 	if err != nil || path == "" {
 		return path, err
 	}

@@ -56,7 +56,7 @@ type App struct {
 	activity     sites.ActivityReader
 }
 
-const appVersion = "0.1.58"
+const appVersion = "0.1.59"
 
 func New(configDir string, hooks Hooks) (*App, error) {
 	if configDir == "" {
@@ -191,7 +191,7 @@ func (a *App) SelectDirectory(title string) (string, error) {
 	if a.hooks.PickDirectory == nil {
 		return "", errors.New("目录选择器尚未初始化")
 	}
-	return a.hooks.PickDirectory(title, "")
+	return withoutDialogCancel(a.hooks.PickDirectory(title, ""))
 }
 
 func (a *App) SetRoot(root string) error {

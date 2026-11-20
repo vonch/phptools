@@ -16,4 +16,11 @@ func TestTaskErrorsAreChinese(t *testing.T) {
 	if got := presentError(errors.New(chinese)); got != chinese {
 		t.Fatal(got)
 	}
+	if got := presentError(errors.New("cancelled by user")); got != "已取消。" {
+		t.Fatal(got)
+	}
+	path, err := withoutDialogCancel(`D:\chosen`, errors.New("cancelled by user"))
+	if path != "" || err != nil {
+		t.Fatalf("dialog cancel should be empty: %q %v", path, err)
+	}
 }

@@ -92,5 +92,7 @@ export function viewLog(kind: string, id: string) {
   navigate("logs");
 }
 export function errorText(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  const text = error instanceof Error ? error.message : String(error);
+  if (text === "cancelled by user" || text === "canceled by user") return "已取消。";
+  return text;
 }

@@ -66,7 +66,7 @@ func (a *App) ImportPublicCertificate(siteID string) (string, error) {
 	if a.hooks.PickCertificate == nil {
 		return "", errors.New("证书文件选择器尚未初始化")
 	}
-	certPath, err := a.hooks.PickCertificate("选择证书文件", "证书文件", "*.crt;*.pem;*.cer")
+	certPath, err := withoutDialogCancel(a.hooks.PickCertificate("选择证书文件", "证书文件", "*.crt;*.pem;*.cer"))
 	if err != nil || certPath == "" {
 		return "", err
 	}
@@ -74,7 +74,7 @@ func (a *App) ImportPublicCertificate(siteID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	keyPath, err := a.hooks.PickCertificate("选择私钥文件", "私钥文件", "*.key;*.pem")
+	keyPath, err := withoutDialogCancel(a.hooks.PickCertificate("选择私钥文件", "私钥文件", "*.key;*.pem"))
 	if err != nil || keyPath == "" {
 		return "", err
 	}

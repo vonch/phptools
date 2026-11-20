@@ -27,7 +27,7 @@ func (a *App) SelectSiteProjectDirectory() (string, error) {
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return "", err
 	}
-	return a.hooks.PickDirectory("选择站点项目目录", dir)
+	return withoutDialogCancel(a.hooks.PickDirectory("选择站点项目目录", dir))
 }
 
 func (a *App) SelectSiteEntry(projectRoot string) (model.SiteEntrySelection, error) {
@@ -38,7 +38,7 @@ func (a *App) SelectSiteEntry(projectRoot string) (model.SiteEntrySelection, err
 	if a.hooks.PickDirectory == nil {
 		return result, errors.New("目录选择器尚未初始化")
 	}
-	path, err := a.hooks.PickDirectory("选择项目内的入口目录", filepath.Clean(projectRoot))
+	path, err := withoutDialogCancel(a.hooks.PickDirectory("选择项目内的入口目录", filepath.Clean(projectRoot)))
 	if err != nil {
 		return result, err
 	}
