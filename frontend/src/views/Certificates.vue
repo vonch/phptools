@@ -1,10 +1,36 @@
 <script setup lang="ts">
 import { computed, h, onMounted, ref, watch } from "vue";
-import { NButton, NCard, NDataTable, NEmpty, NForm, NFormItem, NInput, NModal, NSpace, NTag, type DataTableColumns } from "naive-ui";
+import {
+  NButton,
+  NCard,
+  NCheckbox,
+  NDataTable,
+  NEmpty,
+  NForm,
+  NFormItem,
+  NIcon,
+  NInput,
+  NModal,
+  NPopover,
+  NSpace,
+  NTag,
+  type DataTableBaseColumn,
+  type DataTableColumns,
+  type DataTableSortState,
+} from "naive-ui";
+import { OptionsOutline, SearchOutline } from "@vicons/ionicons5";
 import { api } from "../api";
+import {
+  certificateKindName,
+  defaultCertificateView,
+  matchingCertificates,
+  nextCertificateSort,
+  orderedCertificates,
+} from "../certificateTable";
 import { useAction } from "../composables";
-import { snapshot, tasks } from "../state";
-import { isActiveTask, type SiteCertificate } from "../types";
+import { defaultSiteView, orderedSites } from "../siteTable";
+import { sites, snapshot, tasks } from "../state";
+import { isActiveTask, type CertificateSortableKey, type CertificateViewPreferences, type SiteCertificate } from "../types";
 
 const { busy, run } = useAction();
 const email = ref("");
@@ -14,12 +40,17 @@ const certificateText = ref("");
 const privateKeyText = ref("");
 const rows = ref<SiteCertificate[]>([]);
 const loaded = ref(false);
-const kindName: Record<SiteCertificate["kind"], string> = {
-  none: "未申请",
-  local: "本地证书",
-  public: "公网证书",
-  invalid: "证书无效",
-};
+const search = ref("");
+const showColumns = ref(false);
+const hiddenColumnsDraft = ref<string[]>([]);
+const preferences = computed(() => snapshot.value?.certificateView ?? defaultCertificateView());
+const columnOptions = [
+  { key: "siteName", label: "站点", width: 180, minWidth: 120 },
+  { key: "domains", label: "域名", width: 260, minWidth: 140 },
+  { key: "kind", label: "当前证书", width: 120, minWidth: 100 },
+  { key: "notAfter", label: "到期", width: 120, minWidth: 100 },
+  { key: "actions", label: "操作", width: 320, minWidth: 240 },
+];
 const kindType = {
   none: "default",
   local: "warning",
@@ -31,33 +62,93 @@ const certificateTask = computed(() =>
     isActiveTask(task) && (task.action === "public-certificate" || task.action === "import-certificate" || task.action === "local-certificate"),
   ),
 );
+function columnSize(column: typeof columnOptions[number]) {
+  return { width: column.width, minWidth: column.minWidth };
+}
+function sortableColumn(key: CertificateSortableKey, label: string): DataTableBaseColumn<SiteCertificate> {
+  const order = preferences.value.sortBy === key
+    ? (preferences.value.sortDirection === "asc" ? "ascend" : "descend")
+    : false;
+  const hint = order === "ascend" ? `${label}升序，点击切换降序`
+    : order === "descend" ? `${label}降序，点击恢复站点列表顺序`
+      : `点击按${label}升序排列`;
+  return {
+    key,
+    title: () => h("span", { title: hint }, label),
+    sorter: true,
+    sortOrder: order,
+  };
+}
+const visibleDraftCount = computed(() =>
+  columnOptions.filter((column) => !hiddenColumnsDraft.value.includes(column.key)).length,
+);
+const tableWidth = computed(() =>
+  columnOptions
+    .filter((column) => !preferences.value.hiddenColumns.includes(column.key))
+    .reduce((width, column) => width + columnSize(column).width, 0),
+);
+const manualIds = computed(() =>
+  orderedSites(sites.value, snapshot.value?.siteView ?? defaultSiteView()).map((site) => site.id),
+);
+const filtered = computed(() =>
+  matchingCertificates(
+    orderedCertificates(rows.value, preferences.value, manualIds.value),
+    search.value,
+  ),
+);
+async function savePreferences(value: CertificateViewPreferences) {
+  if (busy.value) return false;
+  return (await run(async () => {
+    await api.SaveCertificateView(value);
+    return true;
+  })) === true;
+}
+function setColumnsOpen(value: boolean) {
+  if (busy.value) return;
+  if (value) hiddenColumnsDraft.value = [...preferences.value.hiddenColumns];
+  showColumns.value = value;
+}
+function setColumnVisible(key: string, visible: boolean) {
+  if (busy.value || (!visible && visibleDraftCount.value <= 1)) return;
+  hiddenColumnsDraft.value = visible
+    ? hiddenColumnsDraft.value.filter((column) => column !== key)
+    : [...hiddenColumnsDraft.value, key];
+}
+async function saveColumns() {
+  if (!visibleDraftCount.value) return;
+  if (await savePreferences({
+    ...preferences.value, hiddenColumns: [...hiddenColumnsDraft.value],
+  }))
+    showColumns.value = false;
+}
+async function cycleSort(sorter: DataTableSortState | DataTableSortState[] | null) {
+  if (!sorter || Array.isArray(sorter)) return;
+  const key = sorter.columnKey;
+  if (key === "siteName" || key === "domains" || key === "kind" || key === "notAfter")
+    await savePreferences(nextCertificateSort(preferences.value, key));
+}
 const columns = computed<DataTableColumns<SiteCertificate>>(() => [
-  { title: "站点", key: "siteName", ellipsis: { tooltip: true } },
+  { ...sortableColumn("siteName", "站点"), ellipsis: { tooltip: true } },
   {
-    title: "域名",
-    key: "domains",
-    render: (row) => h("div", [
+    ...sortableColumn("domains", "域名"),
+    render: (row: SiteCertificate) => h("div", [
       h("div", row.domains.join("、") || "未填写"),
       row.reason ? h("div", { class: "muted" }, row.reason) : null,
     ]),
   },
   {
-    title: "当前证书",
-    key: "kind",
-    width: 120,
-    render: (row) => h(NTag, { size: "small", bordered: false, type: kindType[row.kind] }, { default: () => kindName[row.kind] }),
+    ...sortableColumn("kind", "当前证书"),
+    render: (row: SiteCertificate) => h(NTag, { size: "small", bordered: false, type: kindType[row.kind] }, { default: () => certificateKindName[row.kind] }),
   },
   {
-    title: "到期",
-    key: "notAfter",
-    width: 120,
-    render: (row) => row.notAfter ? row.notAfter.slice(0, 10) : "—",
+    ...sortableColumn("notAfter", "到期"),
+    render: (row: SiteCertificate) => row.notAfter ? row.notAfter.slice(0, 10) : "—",
   },
   {
     title: "操作",
     key: "actions",
     width: 320,
-    render: (row) => {
+    render: (row: SiteCertificate) => {
       const active = certificateTask.value?.targetId === row.siteId;
       const locked = !!certificateTask.value || busy.value;
       return h(NSpace, { size: 8, wrap: false }, {
@@ -88,7 +179,12 @@ const columns = computed<DataTableColumns<SiteCertificate>>(() => [
       });
     },
   },
-]);
+].filter((column) =>
+  !preferences.value.hiddenColumns.includes(String(column.key)),
+).map((column) => {
+  const option = columnOptions.find((item) => item.key === column.key)!;
+  return { ...column, ...columnSize(option) };
+}));
 async function load() {
   if (!snapshot.value?.settings.root) {
     rows.value = [];
@@ -139,18 +235,96 @@ watch(certificateTask, (task, previous) => {
 </script>
 
 <template>
-  <NCard title="公网证书" :bordered="false" class="panel">
-    <p class="muted">
+  <div class="certificates-page">
+  <NCard title="公网证书" :bordered="false" class="panel certificates-panel">
+    <p class="muted certificate-intro">
       为站点域名申请 Let’s Encrypt 证书。域名需要解析到这台电脑，并且公网可以访问 80 端口。也可以在添加窗口里贴上已经申请好的公钥和未加密私钥。证书需要包含站点域名。添加或申请成功后，站点会改用这张证书提供 HTTPS。
     </p>
-    <NForm label-placement="left" class="section-gap">
+    <NForm label-placement="left" class="certificate-email">
       <NFormItem label="通知邮箱">
         <NInput v-model:value="email" placeholder="用于接收证书到期通知" style="max-width: 320px" />
       </NFormItem>
     </NForm>
-    <NDataTable v-if="rows.length" :columns="columns" :data="rows" :bordered="false" />
-    <NEmpty v-else-if="loaded" description="还没有站点。请先在站点管理中创建。" />
+    <div class="table-toolbar certificate-toolbar">
+      <div class="section-label">
+        全部证书 <NTag size="small" :bordered="false">{{ search.trim() ? `${filtered.length} / ${rows.length}` : rows.length }}</NTag>
+      </div>
+      <div class="certificate-toolbar-controls">
+        <NButton
+          text
+          size="small"
+          :disabled="busy || preferences.sortBy === 'manual'"
+          title="按站点列表的当前顺序排列"
+          @click="savePreferences({ ...preferences, sortBy: 'manual', sortDirection: 'asc' })"
+        >{{ preferences.sortBy === 'manual' ? '站点列表顺序' : '恢复站点列表顺序' }}</NButton>
+        <NInput
+          v-model:value="search"
+          placeholder="搜索站点、域名或证书"
+          :input-props="{ 'aria-label': '搜索证书' }"
+          clearable
+          class="certificate-search"
+        >
+          <template #prefix><NIcon><SearchOutline /></NIcon></template>
+        </NInput>
+        <NPopover
+          :show="showColumns"
+          trigger="click"
+          placement="bottom-end"
+          :width="240"
+          @update:show="setColumnsOpen"
+        >
+          <template #trigger>
+            <NButton :disabled="busy" title="显示列" aria-label="显示列">
+              <template #icon><NIcon><OptionsOutline /></NIcon></template>
+            </NButton>
+          </template>
+          <div class="certificate-column-settings">
+            <strong>显示列</strong>
+            <p class="muted">选择列表中显示的字段，至少保留一列。</p>
+            <NCheckbox
+              v-for="column in columnOptions"
+              :key="column.key"
+              :checked="!hiddenColumnsDraft.includes(column.key)"
+              :disabled="busy || (visibleDraftCount === 1 && !hiddenColumnsDraft.includes(column.key))"
+              @update:checked="(value) => setColumnVisible(column.key, value)"
+            >{{ column.label }}</NCheckbox>
+            <NButton
+              text
+              type="primary"
+              :disabled="busy || !hiddenColumnsDraft.length"
+              class="certificate-columns-reset"
+              @click="hiddenColumnsDraft = []"
+            >恢复默认显示</NButton>
+            <NSpace justify="end" :size="8">
+              <NButton size="small" :disabled="busy" @click="showColumns = false">取消</NButton>
+              <NButton size="small" type="primary" :loading="busy" :disabled="!visibleDraftCount || busy" @click="saveColumns">应用</NButton>
+            </NSpace>
+          </div>
+        </NPopover>
+      </div>
+    </div>
+    <div v-if="rows.length" class="certificate-table-frame">
+      <NDataTable
+        class="certificate-table"
+        flex-height
+        :theme-overrides="{ tdColorSorting: 'var(--n-td-color)', thColorSorting: 'var(--n-th-color)' }"
+        :columns="columns"
+        :data="filtered"
+        :bordered="false"
+        :scroll-x="tableWidth"
+        :row-key="(row: SiteCertificate) => row.siteId"
+        @update:sorter="cycleSort"
+      >
+        <template #empty>
+          <NEmpty description="没有找到匹配的证书">
+            <template #extra><NButton secondary @click="search = ''">清除搜索</NButton></template>
+          </NEmpty>
+        </template>
+      </NDataTable>
+    </div>
+    <NEmpty v-else-if="loaded" description="还没有站点。请先在站点管理中创建。" class="empty-block" />
   </NCard>
+  </div>
   <NModal
     :show="showImport"
     preset="card"
@@ -195,3 +369,80 @@ watch(certificateTask, (task, previous) => {
     </template>
   </NModal>
 </template>
+
+<style scoped>
+.certificates-page {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.certificates-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.certificates-panel :deep(.n-card-header),
+.certificate-intro,
+.certificate-email,
+.certificate-toolbar {
+  flex: 0 0 auto;
+}
+.certificates-panel :deep(.n-card__content) {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.certificate-intro {
+  margin-top: 0;
+}
+.certificate-email {
+  margin-bottom: 0;
+}
+.certificate-toolbar {
+  flex-wrap: wrap;
+  align-items: flex-start;
+  padding-bottom: 12px;
+  background: #fff;
+}
+.certificate-toolbar-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: 100%;
+}
+.certificate-search {
+  width: 245px;
+  max-width: 100%;
+}
+.certificate-column-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 4px;
+}
+.certificate-column-settings p {
+  margin: -4px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.certificate-columns-reset {
+  align-self: flex-start;
+  margin: 2px 0 4px;
+  font-size: 12px;
+}
+.certificate-table-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.certificate-table {
+  height: 100%;
+}
+</style>

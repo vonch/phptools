@@ -112,6 +112,13 @@ export interface SiteViewPreferences {
   sortBy: SiteSortKey;
   sortDirection: "asc" | "desc";
 }
+export type CertificateSortableKey = "siteName" | "domains" | "kind" | "notAfter";
+export type CertificateSortKey = CertificateSortableKey | "manual";
+export interface CertificateViewPreferences {
+  hiddenColumns: string[];
+  sortBy: CertificateSortKey;
+  sortDirection: "asc" | "desc";
+}
 export interface SiteEntrySelection {
   entry: string;
   selected: boolean;
@@ -213,6 +220,7 @@ export interface Snapshot {
   settings: Settings;
   sidebar: SidebarItem[];
   siteView: SiteViewPreferences;
+  certificateView: CertificateViewPreferences;
   packages: Package[];
   instances: Instance[];
   sites: Site[];

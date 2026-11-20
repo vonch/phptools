@@ -171,6 +171,12 @@ type SiteViewPreferences struct {
 	SortDirection string   `json:"sortDirection"`
 }
 
+type CertificateViewPreferences struct {
+	HiddenColumns []string `json:"hiddenColumns"`
+	SortBy        string   `json:"sortBy"`
+	SortDirection string   `json:"sortDirection"`
+}
+
 type Diagnostic struct {
 	Level   string `json:"level"`
 	Message string `json:"message"`
@@ -257,7 +263,8 @@ type CertificatePage struct {
 type Snapshot struct {
 	Settings     Settings            `json:"settings"`
 	Sidebar      []SidebarItem       `json:"sidebar"`
-	SiteView     SiteViewPreferences `json:"siteView"`
+	SiteView        SiteViewPreferences        `json:"siteView"`
+	CertificateView CertificateViewPreferences `json:"certificateView"`
 	Packages     []Package           `json:"packages"`
 	Instances    []Instance          `json:"instances"`
 	Sites        []Site              `json:"sites"`

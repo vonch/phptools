@@ -14,6 +14,7 @@ import type {
   Site,
   CertificatePage,
   SiteEntrySelection,
+  CertificateViewPreferences,
   SiteViewPreferences,
   SidebarItem,
   Snapshot,
@@ -45,6 +46,7 @@ interface DesktopAPI {
   InstallUpdate(): Promise<string>;
   SaveSidebar(items: SidebarItem[]): Promise<void>;
   SaveSiteView(preferences: SiteViewPreferences): Promise<void>;
+  SaveCertificateView(preferences: CertificateViewPreferences): Promise<void>;
   SelectDirectory(title: string): Promise<string>;
   SelectSiteProjectDirectory(): Promise<string>;
   SelectSiteEntry(projectRoot: string): Promise<SiteEntrySelection>;

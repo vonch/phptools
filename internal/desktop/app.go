@@ -55,7 +55,7 @@ type App struct {
 	activity     sites.ActivityReader
 }
 
-const appVersion = "0.1.65"
+const appVersion = "0.1.66"
 
 func New(configDir string, hooks Hooks) (*App, error) {
 	if configDir == "" {
@@ -73,6 +73,7 @@ func New(configDir string, hooks Hooks) (*App, error) {
 	a.data = model.Snapshot{Settings: model.Settings{SuggestedRoot: `D:\PHPTools`, Version: appVersion, UpdateManifestURL: defaultUpdateManifestURL}, Packages: packages.SeedCatalog(), Instances: []model.Instance{}, Sites: []model.Site{}, Tasks: []model.Task{}, Diagnostics: []model.Diagnostic{}}
 	a.loadSidebar()
 	a.loadSiteView()
+	a.loadCertificateView()
 	a.loadUpdateResult()
 	var config struct {
 		Root string `json:"root"`
