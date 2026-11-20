@@ -15,11 +15,12 @@ import {
   NPopover,
   NSpace,
   NTag,
+  NTooltip,
   type DataTableBaseColumn,
   type DataTableColumns,
   type DataTableSortState,
 } from "naive-ui";
-import { OptionsOutline, SearchOutline } from "@vicons/ionicons5";
+import { InformationCircleOutline, OptionsOutline, SearchOutline } from "@vicons/ionicons5";
 import { api } from "../api";
 import {
   certificateKindName,
@@ -238,10 +239,22 @@ watch(certificateTask, (task, previous) => {
 
 <template>
   <div class="certificates-page">
-  <NCard title="公网证书" :bordered="false" class="panel certificates-panel">
-    <p class="muted certificate-intro">
-      为站点域名申请 Let’s Encrypt 证书。域名需要解析到这台电脑，并且公网可以访问 80 端口。也可以在添加窗口里贴上已经申请好的公钥和未加密私钥。证书需要包含站点域名。添加或申请成功后，站点会改用这张证书提供 HTTPS。
-    </p>
+  <NCard :bordered="false" class="panel certificates-panel">
+    <template #header>
+      <span class="certificate-title">
+        公网证书
+        <NTooltip placement="bottom-start">
+          <template #trigger>
+            <button type="button" class="certificate-help" aria-label="证书说明">
+              <NIcon :size="16"><InformationCircleOutline /></NIcon>
+            </button>
+          </template>
+          <div class="certificate-help-text">
+            为站点域名申请 Let’s Encrypt 证书。域名需要解析到这台电脑，并且公网可以访问 80 端口。也可以在添加窗口里贴上已经申请好的公钥和未加密私钥。证书需要包含站点域名。添加或申请成功后，站点会改用这张证书提供 HTTPS。
+          </div>
+        </NTooltip>
+      </span>
+    </template>
     <NForm label-placement="left" class="certificate-email">
       <NFormItem label="通知邮箱">
         <NInput v-model:value="email" placeholder="用于接收证书到期通知" style="max-width: 320px" />
@@ -389,7 +402,6 @@ watch(certificateTask, (task, previous) => {
   overflow: hidden;
 }
 .certificates-panel :deep(.n-card-header),
-.certificate-intro,
 .certificate-email,
 .certificate-toolbar {
   flex: 0 0 auto;
@@ -401,8 +413,32 @@ watch(certificateTask, (task, previous) => {
   flex-direction: column;
   overflow: hidden;
 }
-.certificate-intro {
-  margin-top: 0;
+.certificate-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.certificate-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #7b8b98;
+  cursor: help;
+}
+.certificate-help:hover,
+.certificate-help:focus-visible {
+  background: #eef3f6;
+  color: #2d6a62;
+}
+.certificate-help-text {
+  max-width: 420px;
+  line-height: 1.7;
 }
 .certificate-email {
   margin-bottom: 0;
