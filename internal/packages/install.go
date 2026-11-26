@@ -33,6 +33,15 @@ func Install(ctx context.Context, root string, pkg model.Package, progress func(
 	if err := validatePackage(pkg); err != nil {
 		return pkg, err
 	}
+	if progress == nil {
+		progress = func(int64, int64, string) {}
+	}
+	if pkg.Kind == "php" {
+		pkg = resolveMissingPHP(ctx, pkg, progress)
+		if err := validatePackage(pkg); err != nil {
+			return pkg, err
+		}
+	}
 	area, err := managedArea(root, true)
 	if err != nil {
 		return pkg, err
@@ -54,9 +63,6 @@ func Install(ctx context.Context, root string, pkg model.Package, progress func(
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return pkg, err
 	}
-	if progress == nil {
-		progress = func(int64, int64, string) {}
-	}
 	staging, err := os.MkdirTemp(area, ".install-"+pkg.ID+"-")
 	if err != nil {
 		return pkg, err
@@ -65,7 +71,13 @@ func Install(ctx context.Context, root string, pkg model.Package, progress func(
 	archive := filepath.Join(staging, "download.zip")
 	progress(0, 0, "正在下载 "+pkg.Kind+" "+pkg.Version)
 	digest, err := downloadZIP(ctx, pkg.URL, archive, progress)
+	if connectionInterrupted(err) {
+		_ = os.Remove(archive)
+		progress(0, 0, "下载中断，正在重试")
+		digest, err = downloadZIP(ctx, pkg.URL, archive, progress)
+	}
 	if archiveURL, ok := phpArchiveURL(pkg.URL); ok && statusCode(err) == http.StatusNotFound {
+		_ = os.Remove(archive)
 		progress(0, 0, "发行目录没有该版本，改为下载归档")
 		digest, err = downloadZIP(ctx, archiveURL, archive, progress)
 	}
@@ -370,6 +382,76 @@ func (p *progressWriter) Write(data []byte) (int, error) {
 type statusError struct{ code int }
 
 func (e statusError) Error() string { return fmt.Sprintf("组件下载失败：HTTP %d", e.code) }
+
+func resolveMissingPHP(ctx context.Context, pkg model.Package, progress func(int64, int64, string)) model.Package {
+	if err := probeZIP(ctx, pkg.URL); err == nil || !phpReleaseMissing(err) {
+		return pkg
+	}
+	progress(0, 0, "原下载地址不可用，正在查询官方当前地址")
+	fresh, ok := currentPHPRelease(ctx, pkg.Version)
+	if !ok || fresh.URL == pkg.URL {
+		return pkg
+	}
+	if fresh.Version != pkg.Version {
+		progress(0, 0, "改为下载官方当前版本 "+fresh.Version)
+	} else {
+		progress(0, 0, "改为使用官方目录里的当前地址")
+	}
+	return fresh
+}
+
+func currentPHPRelease(ctx context.Context, version string) (model.Package, bool) {
+	found, err := refreshPHP(ctx)
+	if err != nil {
+		return model.Package{}, false
+	}
+	branch := majorMinor(version)
+	var exact, newest model.Package
+	hasExact, hasNewest := false, false
+	for _, item := range found {
+		if item.Version == version {
+			exact, hasExact = item, true
+		}
+		if majorMinor(item.Version) == branch && (!hasNewest || compareVersion(item.Version, newest.Version) > 0) {
+			newest, hasNewest = item, true
+		}
+	}
+	if hasExact {
+		return exact, true
+	}
+	if hasNewest && newest.Version != version {
+		return newest, true
+	}
+	return model.Package{}, false
+}
+
+func majorMinor(version string) string {
+	base, _, _ := strings.Cut(version, "-")
+	parts := strings.Split(base, ".")
+	if len(parts) < 2 {
+		return ""
+	}
+	return parts[0] + "." + parts[1]
+}
+
+func phpReleaseMissing(err error) bool {
+	code := 0
+	if _, scan := fmt.Sscanf(err.Error(), "Windows ZIP HTTP %d", &code); scan == nil && (code == http.StatusNotFound || code == http.StatusGone) {
+		return true
+	}
+	return statusCode(err) == http.StatusNotFound || statusCode(err) == http.StatusGone
+}
+
+func connectionInterrupted(err error) bool {
+	if err == nil || errors.Is(err, context.Canceled) {
+		return false
+	}
+	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	message := err.Error()
+	return strings.Contains(message, "EOF") || strings.Contains(message, "connection reset") || strings.Contains(message, "timeout") || strings.Contains(message, "Timeout")
+}
 
 func statusCode(err error) int {
 	var status statusError

@@ -238,7 +238,8 @@ func (a *App) storeInstalledPackage(p model.Package) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("安装完成但版本目录已更改：%s", p.ID)
+	a.data.Packages = append(a.data.Packages, p)
+	return nil
 }
 
 func (a *App) UninstallPackage(id string) error {

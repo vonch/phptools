@@ -180,11 +180,43 @@ func TestInstallUsesArchiveWhenReleaseWasMoved(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if installed.URL != pkg.URL {
-		t.Fatalf("catalog URL changed: %s", installed.URL)
+	if installed.URL != pkg.URL || installed.Version != pkg.Version {
+		t.Fatalf("catalog identity changed: %+v", installed)
 	}
-	if len(seen) != 2 || !strings.Contains(seen[1], "/archives/php-8.0.30-nts-Win32-vs16-x64.zip") {
+	if len(seen) == 0 || !strings.Contains(seen[len(seen)-1], "/archives/php-8.0.30-nts-Win32-vs16-x64.zip") {
 		t.Fatalf("archive was not requested: %v", seen)
+	}
+}
+func TestInstallReplacesMissingPatchWithCurrentRelease(t *testing.T) {
+	data := testZIP(t, map[string]string{"php-cgi.exe": "current"})
+	digest := sha256.Sum256(data)
+	hash := hex.EncodeToString(digest[:])
+	pkg := phpPackage("8.4.26", "php-8.4.26-nts-Win32-vs17-x64.zip", strings.Repeat("ab", 32), false)
+	catalog := []byte(`{"8.4":{"version":"8.4.28","nts-vs17-x64":{"zip":{"path":"php-8.4.28-nts-Win32-vs17-x64.zip","sha256":"` + hash + `"}}}}`)
+	var messages []string
+	mockHTTP(t, func(r *http.Request) (*http.Response, error) {
+		if strings.HasSuffix(r.URL.Path, "releases.json") {
+			return httpData(r, 200, catalog), nil
+		}
+		if strings.Contains(r.URL.Path, "php-8.4.28-nts-Win32-vs17-x64.zip") {
+			return httpData(r, 200, data), nil
+		}
+		return httpData(r, 404, []byte("missing")), nil
+	})
+	root := filepath.Join(t.TempDir(), "root")
+	installed, err := Install(context.Background(), root, pkg, func(_, _ int64, message string) { messages = append(messages, message) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if installed.Version != "8.4.28" || installed.ID != "php-8.4.28-x64" || installed.SHA256 != hash {
+		t.Fatalf("current release was not selected: %+v", installed)
+	}
+	if _, err := os.Stat(filepath.Join(installed.Path, "php-cgi.exe")); err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(messages, "\n")
+	if !strings.Contains(joined, "改为下载官方当前版本 8.4.28") {
+		t.Fatalf("progress did not explain the address change: %v", messages)
 	}
 }
 func TestInstallChecksumFailureCleansStaging(t *testing.T) {

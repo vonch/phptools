@@ -172,7 +172,7 @@ func Refresh(ctx context.Context, previous []model.Package) ([]model.Package, []
 	for range sources {
 		r := <-ch
 		if r.err != nil {
-			diagnostics = append(diagnostics, model.Diagnostic{Level: "warning", Message: r.name + " 目录刷新失败，保留缓存：" + r.err.Error()})
+			diagnostics = append(diagnostics, model.Diagnostic{Level: "warning", Message: r.name + " 目录刷新失败，保留缓存：" + describeSourceError(r.err)})
 		}
 		if r.err == nil || len(r.pkgs) > 0 {
 			succeeded++
@@ -250,6 +250,12 @@ func fetchBytes(ctx context.Context, raw string, limit int64) ([]byte, error) {
 	}
 	req.Header.Set("User-Agent", "PHPTools/0.1")
 	res, e := client.Do(req)
+	if connectionInterrupted(e) {
+		if res != nil && res.Body != nil {
+			res.Body.Close()
+		}
+		res, e = client.Do(req)
+	}
 	if e != nil {
 		return nil, e
 	}
@@ -266,6 +272,20 @@ func fetchBytes(ctx context.Context, raw string, limit int64) ([]byte, error) {
 	}
 	return data, nil
 }
+func describeSourceError(err error) string {
+	if err == nil {
+		return "暂时无法连接官方来源"
+	}
+	if connectionInterrupted(err) {
+		return "连接被中断"
+	}
+	message := err.Error()
+	if i := strings.LastIndex(message, "HTTP "); i >= 0 {
+		return "服务器返回 " + message[i:]
+	}
+	return "暂时无法连接官方来源"
+}
+
 func decodeJSON(ctx context.Context, raw string, target any) error {
 	data, e := fetchBytes(ctx, raw, 4<<20)
 	if e != nil {
